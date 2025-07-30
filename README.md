@@ -1,6 +1,6 @@
-# Enhanced Hierarchical RAG Processing System
+# Financial RAG - Enhanced Hierarchical Processing System
 
-An enterprise-grade Retrieval-Augmented Generation (RAG) system with hierarchical map-reduce processing capabilities for handling large document datasets without token limit constraints.
+An enterprise-grade Retrieval-Augmented Generation (RAG) system specifically designed for financial document processing with hierarchical map-reduce capabilities for handling large document datasets without token limit constraints.
 
 ## 🚀 Key Features
 
@@ -89,8 +89,8 @@ Final Answer
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/enhanced-hierarchical-rag-system.git
-   cd enhanced-hierarchical-rag-system
+   git clone https://github.com/hawkai10/Financial-RAG.git
+   cd Financial-RAG
    ```
 
 2. **Set up Python environment**
