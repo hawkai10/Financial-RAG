@@ -14,28 +14,25 @@ class UnifiedQueryProcessor:
     
     def __init__(self):
         self.unified_prompt_template = """
-You are a business document query processor. Process this user query and provide a structured response:
+You are a business document query processor. Classify this query:
 
 USER QUERY: "{query}"
 
-Please provide your response in this EXACT JSON format:
+Response format (JSON only):
 {{
-    "corrected_query": "grammar and spelling corrected version",
-    "intent": "Standard|Analyse|Aggregation",
+    "corrected_query": "corrected version",
+    "intent": "Standard|Analyse|Aggregation", 
     "confidence": 0.85,
-    "reasoning": "brief explanation for intent classification",
-    "alternative_queries": [
-        "first alternative phrasing",
-        "second alternative phrasing"
-    ]
+    "reasoning": "brief explanation",
+    "alternative_queries": ["alternative 1", "alternative 2"]
 }}
 
-INTENT CLASSIFICATION RULES:
-- Standard: Simple factual questions and general business queries (what is, who is, show me the, find the)
-- Analyse: Complex analytical questions requiring comparison, trends, insights (analyze, compare, relationship, evaluate, assess, breakdown, insights, trends, patterns)
-- Aggregation: Counting, listing, or summarizing multiple items (how many, list all, count, total)
+INTENT RULES:
+- Standard: Simple factual questions (what is, who is, show me)
+- Analyse: Analytical questions (analyze, compare, trends, insights)  
+- Aggregation: Counting/listing (how many, list all, count, total)
 
-Ensure the JSON is valid and contains exactly these fields.
+Return valid JSON only.
 """
         
         # Fallback patterns for when LLM parsing fails
