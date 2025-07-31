@@ -15,10 +15,10 @@ import pdfplumber
 import hashlib
 from txtai import Embeddings
 from tqdm import tqdm
-from ..utils.paths import CONTEXTUALIZED_CHUNKS_JSON, CONTEXTUALIZED_CHUNKS_CSV, SOURCE_DOCUMENTS_DIR, EXTRACTION_LOGS_DIR
+from ..utils.paths import CONTEXTUALIZED_CHUNKS_JSON, CONTEXTUALIZED_CHUNKS_CSV, SOURCE_DOCUMENTS, EXTRACTION_LOGS
 
 # Path to the folder containing source documents
-SOURCE_DIR = SOURCE_DOCUMENTS_DIR
+SOURCE_DIR = SOURCE_DOCUMENTS
 
 # Output files for contextualized chunks
 OUTPUT_JSON = str(CONTEXTUALIZED_CHUNKS_JSON)
@@ -45,7 +45,7 @@ def save_extracted_log(file_path, extracted_content):
     log_dir = os.path.join(os.path.dirname(__file__), '..', 'extraction_logs')
     os.makedirs(log_dir, exist_ok=True)
     base_name = os.path.basename(str(file_path))
-    log_path = EXTRACTION_LOGS_DIR / f"{base_name}.extracted.log.txt"
+    log_path = EXTRACTION_LOGS / f"{base_name}.extracted.log.txt"
     with open(log_path, "w", encoding="utf-8") as f:
         f.write(extracted_content)
     print(f"Saved extracted content to {log_path}")

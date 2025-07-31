@@ -4,6 +4,7 @@ from typing import Dict, Tuple
 from dotenv import load_dotenv
 import json
 import numpy as np
+from .paths import BUSINESS_DOCS_INDEX, CONTEXTUALIZED_CHUNKS_JSON
 
 def sanitize_for_json(obj):
     """Sanitize data for JSON serialization by converting numpy types to Python types."""
@@ -27,8 +28,8 @@ class Config:
     GEMINI_API_URL: str = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent"
     
     # File Paths
-    INDEX_PATH: str = "business-docs-index"
-    CHUNKS_FILE: str = "contextualized_chunks.json"
+    INDEX_PATH: str = str(BUSINESS_DOCS_INDEX)
+    CHUNKS_FILE: str = str(CONTEXTUALIZED_CHUNKS_JSON)
     
     # Processing Limits
     MAX_CONTEXT_LENGTH: int = 4000

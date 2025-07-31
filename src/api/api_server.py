@@ -757,6 +757,8 @@ def search_stream():
 if __name__ == '__main__':
     print("[STARTUP] Starting RAG API Server...")
     
+def start_server():
+    """Start the Flask API server with proper initialization."""
     # Ensure data pipeline is up-to-date before starting server
     print("[PIPELINE] Checking data pipeline status...")
     if ensure_data_pipeline_up_to_date():
@@ -781,3 +783,6 @@ if __name__ == '__main__':
         debug=True,
         threaded=True
     )
+
+if __name__ == "__main__":
+    start_server()

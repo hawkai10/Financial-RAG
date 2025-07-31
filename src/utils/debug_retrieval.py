@@ -7,13 +7,14 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
 from txtai import Embeddings
 import sqlite3
+from .paths import CHUNKS_DB
 
 def test_retrieval():
     print("=== RAG Retrieval Debug ===")
     
     # Test 1: Check database
     print("\n1. Checking database...")
-    conn = sqlite3.connect('chunks.db')
+    conn = sqlite3.connect(str(CHUNKS_DB))
     cursor = conn.cursor()
     cursor.execute('SELECT COUNT(*) FROM chunks')
     chunk_count = cursor.fetchone()[0]

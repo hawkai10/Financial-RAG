@@ -16,7 +16,7 @@ from typing import Dict, List, Any, Optional, Tuple, Set
 # Project imports
 from ..utils.paths import (
     SOURCE_MANIFEST_JSON, CHUNKS_DB, CONTEXTUALIZED_CHUNKS_JSON,
-    SOURCE_DOCUMENTS_DIR, BUSINESS_DOCS_INDEX_DIR, EMBEDDINGS_DIR
+    SOURCE_DOCUMENTS, BUSINESS_DOCS_INDEX, EMBEDDINGS_DIR
 )
 
 # Configuration constants
@@ -26,11 +26,8 @@ CONTEXTUALIZED_JSON = str(CONTEXTUALIZED_CHUNKS_JSON)
 from tqdm import tqdm
 
 # Configuration
-SOURCE_DIR = Path(r"C:\Users\arvin\OneDrive\Desktop\trial\docling\Source_Documents")
-MANIFEST_FILE = "source_manifest.json"
-CHUNKS_DB = "chunks.db"
-CONTEXTUALIZED_JSON = "contextualized_chunks.json"
-EMBEDDINGS_INDEX = "business-docs-index"
+SOURCE_DIR = SOURCE_DOCUMENTS
+EMBEDDINGS_INDEX = str(BUSINESS_DOCS_INDEX)
 
 class PipelineOrchestrator:
     """Manages the complete data pipeline from documents to embeddings."""

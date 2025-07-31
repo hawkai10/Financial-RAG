@@ -4,7 +4,11 @@ import pickle
 import hashlib
 import sqlite3
 import threading
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
+from contextlib import contextmanager
+from collections import OrderedDict
+import numpy as np
+from .paths import CHUNKS_DB
 from queue import Queue, Empty
 from contextlib import contextmanager
 from cachetools import TTLCache
@@ -222,4 +226,4 @@ class ConnectionPool:
 # Initialize global cache instances
 chunk_cache = SmartChunkCache(max_size=500)
 embedding_cache = SmartEmbeddingCache()
-db_pool = ConnectionPool("chunks.db", pool_size=10)
+db_pool = ConnectionPool(str(CHUNKS_DB), pool_size=10)
