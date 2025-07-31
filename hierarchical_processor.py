@@ -625,98 +625,76 @@ Be direct and accurate."""
         strategy = getattr(self, 'query_strategy', query_type)
         
         if strategy == "Aggregation":
-            return f"""You are systematically collecting information from batch {batch_id + 1} of a comprehensive aggregation analysis.
+            return f"""Extract ALL relevant items from batch {batch_id + 1} for: "{question}"
 
-ORIGINAL QUESTION: {question}
+TASK: Find and list every qualifying item from these {batch_size} documents.
 
-YOUR ROLE: Information Aggregator
-- Find and extract ALL relevant items, entities, or data points
-- Maintain complete accuracy - do not miss any qualifying items
-- Organize information systematically
-- Provide quantitative summaries where applicable
+RULES:
+• Extract exact values (numbers, dates, names, amounts)
+• Include source document for each item
+• Group similar items but list all instances
+• DO NOT summarize - preserve individual entries
 
-PROCESSING INSTRUCTIONS:
-- Examine each of the {batch_size} documents thoroughly
-- Extract exact values (numbers, dates, names, amounts) as found
-- Note source document for each item
-- Use consistent categorization and formatting
-- If items are similar, group them logically but list all instances
-- Do NOT summarize or combine across documents - preserve individual entries
+FORMAT:
+• Structured list with categories
+• Document references
+• Counts per category
+• Clear organization
 
-OUTPUT FORMAT:
-- Structured list with clear categories
-- Source references for each item
-- Counts and totals where relevant
-- Clear organization (chronological, categorical, etc.)
-
-Remember: This is part of a larger aggregation. Focus on complete extraction from this batch."""
+Focus: Complete extraction from this batch only."""
 
         elif strategy == "Analyse":
-            return f"""You are conducting detailed analytical research on batch {batch_id + 1} of {batch_size} documents.
+            return f"""Analyze batch {batch_id + 1} for: "{question}"
 
-ORIGINAL QUESTION: {question}
+TASK: Extract patterns, trends, and insights from these {batch_size} documents.
 
-YOUR ROLE: Business Analyst
-- Identify patterns, trends, and relationships
-- Provide critical evaluation of evidence
-- Extract insights and implications
-- Support findings with specific data
+FRAMEWORK:
+• Key facts and data points
+• Patterns and relationships
+• Evidence reliability
+• Insights and implications
+• Supporting documentation
 
-ANALYTICAL FRAMEWORK:
-1. Data Examination: What key facts and figures are present?
-2. Pattern Recognition: What trends or relationships emerge?
-3. Critical Evaluation: How reliable and significant are these findings?
-4. Insight Generation: What implications or conclusions can be drawn?
-5. Evidence Documentation: What specific data supports your analysis?
+INSTRUCTIONS:
+• Examine quantitative and qualitative data
+• Note correlations, anomalies, gaps
+• Consider multiple perspectives
+• Include specific document citations
 
-PROCESSING INSTRUCTIONS:
-- Analyze both quantitative and qualitative information
-- Look for correlations, causations, and anomalies
-- Consider multiple perspectives and potential limitations
-- Note gaps or inconsistencies in the data
-- Identify actionable insights where possible
+FORMAT:
+• Structured analysis with headings
+• Evidence citations
+• Quantitative data
+• Key insights
+• Data limitations
 
-OUTPUT FORMAT:
-- Structured analysis with clear headings
-- Specific evidence citations from documents
-- Quantitative data where available
-- Key insights and implications
-- Notes on data quality or limitations
-
-This analysis will be combined with other batches for comprehensive insights."""
+This batch will combine with others for full analysis."""
 
         elif strategy == "Standard":
-            return f"""You are providing focused answers using batch {batch_id + 1} of {batch_size} business documents.
+            return f"""Answer from batch {batch_id + 1}: "{question}"
 
-ORIGINAL QUESTION: {question}
+TASK: Provide direct, factual answer from these {batch_size} documents.
 
-YOUR ROLE: Information Specialist
-- Provide clear, direct answers to the specific question
-- Focus on relevant facts and details
-- Maintain accuracy and clarity
-- Connect information logically
+GUIDELINES:
+• Answer directly and concisely
+• Include specific facts and details
+• Quote relevant information
+• State if information incomplete
+• Focus on most relevant content
 
-RESPONSE GUIDELINES:
-- Answer the question directly and concisely
-- Include specific details and facts from the documents
-- Quote relevant information when it strengthens the answer
-- If information is incomplete, clearly state what is known
-- Prioritize the most relevant information for the query
+INSTRUCTIONS:
+• Maintain factual accuracy
+• Present multiple viewpoints if conflicting
+• Cite specific documents
+• Keep response organized
 
-PROCESSING INSTRUCTIONS:
-- Focus on information that directly addresses the question
-- Maintain factual accuracy - do not infer beyond the evidence
-- If conflicting information exists, present multiple viewpoints
-- Cite specific documents when referencing information
-- Keep response focused and well-organized
+FORMAT:
+• Direct answer
+• Supporting details
+• Source references
+• Logical structure
 
-OUTPUT FORMAT:
-- Direct answer to the question
-- Supporting details and evidence
-- Source references where relevant
-- Clear structure and logical flow
-
-Note: This response will be combined with other batches to provide a comprehensive answer."""
+This response combines with other batches for complete answer."""
 
         else:  # Fallback for unknown strategy
             return f"""Answer this question using the {batch_size} documents in batch {batch_id + 1}.
