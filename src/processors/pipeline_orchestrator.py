@@ -5,12 +5,24 @@ Ensures all data is up-to-date before serving the API
 """
 
 import os
+import sys
 import json
 import hashlib
-from pathlib import Path
-from typing import Dict, List, Set, Tuple
-from datetime import datetime
 import sqlite3
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Tuple, Set
+
+# Project imports
+from ..utils.paths import (
+    SOURCE_MANIFEST_JSON, CHUNKS_DB, CONTEXTUALIZED_CHUNKS_JSON,
+    SOURCE_DOCUMENTS_DIR, BUSINESS_DOCS_INDEX_DIR, EMBEDDINGS_DIR
+)
+
+# Configuration constants
+MANIFEST_FILE = str(SOURCE_MANIFEST_JSON)
+CHUNKS_DB_FILE = str(CHUNKS_DB)
+CONTEXTUALIZED_JSON = str(CONTEXTUALIZED_CHUNKS_JSON)
 from tqdm import tqdm
 
 # Configuration

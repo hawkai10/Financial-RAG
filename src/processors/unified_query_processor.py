@@ -7,7 +7,7 @@ import json
 import re
 import time
 from typing import Dict, List, Any
-from utils import logger, validate_and_sanitize_query
+from ..utils.utils import logger, validate_and_sanitize_query
 
 class UnifiedQueryProcessor:
     """Single LLM call for all query preprocessing tasks."""
@@ -69,7 +69,7 @@ Return valid JSON only.
             import requests
             import json
             import time
-            from config import config
+            from ..utils.config import config
             
             # Direct API call to avoid circular import
             max_retries = 3

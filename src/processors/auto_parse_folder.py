@@ -15,13 +15,14 @@ import pdfplumber
 import hashlib
 from txtai import Embeddings
 from tqdm import tqdm
+from ..utils.paths import CONTEXTUALIZED_CHUNKS_JSON, CONTEXTUALIZED_CHUNKS_CSV, SOURCE_DOCUMENTS_DIR, EXTRACTION_LOGS_DIR
 
 # Path to the folder containing source documents
-SOURCE_DIR = Path(r"C:\Users\arvin\OneDrive\Desktop\trial\docling\Source_Documents")
+SOURCE_DIR = SOURCE_DOCUMENTS_DIR
 
 # Output files for contextualized chunks
-OUTPUT_JSON = "contextualized_chunks.json"
-OUTPUT_CSV = "contextualized_chunks.csv"
+OUTPUT_JSON = str(CONTEXTUALIZED_CHUNKS_JSON)
+OUTPUT_CSV = str(CONTEXTUALIZED_CHUNKS_CSV)
 
 # Tokenizer setup (using cl100k_base, compatible with OpenAI/gpt-3.5/4)
 ENCODING = tiktoken.get_encoding("cl100k_base")
@@ -44,7 +45,7 @@ def save_extracted_log(file_path, extracted_content):
     log_dir = os.path.join(os.path.dirname(__file__), '..', 'extraction_logs')
     os.makedirs(log_dir, exist_ok=True)
     base_name = os.path.basename(str(file_path))
-    log_path = os.path.join(log_dir, base_name + ".extracted.log.txt")
+    log_path = EXTRACTION_LOGS_DIR / f"{base_name}.extracted.log.txt"
     with open(log_path, "w", encoding="utf-8") as f:
         f.write(extracted_content)
     print(f"Saved extracted content to {log_path}")

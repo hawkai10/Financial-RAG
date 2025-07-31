@@ -6,13 +6,14 @@ from typing import Any, Dict, List, Optional, Union
 from functools import lru_cache
 from time import time
 from collections import defaultdict, Counter
-from config import sanitize_for_json
+from .config import sanitize_for_json
+from .paths import RAG_APP_LOG
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('rag_app.log'),
+        logging.FileHandler(str(RAG_APP_LOG)),
         logging.StreamHandler()
     ]
 )

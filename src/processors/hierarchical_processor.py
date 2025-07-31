@@ -72,7 +72,7 @@ class HierarchicalProcessor:
         
         # Adjust token limits based on strategy (if available from config)
         try:
-            from config import config as app_config
+            from ..utils.config import config as app_config
             if hasattr(app_config, 'HIERARCHICAL_STRATEGY_TOKEN_LIMITS'):
                 strategy_limit = app_config.HIERARCHICAL_STRATEGY_TOKEN_LIMITS.get(
                     strategy, 

@@ -4,6 +4,7 @@ import sys
 import traceback
 from pathlib import Path
 from typing import Dict, List, Any
+from ..utils.paths import CONTEXTUALIZED_CHUNKS_JSON, EMBEDDINGS_DIR
 
 def load_and_prepare_chunks_txtai_format(file_path: str) -> List[Dict[str, Any]]:
     """
@@ -104,7 +105,7 @@ def create_embeddings_index_txtai(chunks: List[Dict[str, Any]],
 
 def main():
     """Main execution function."""
-    input_file = "contextualized_chunks.json"
+    input_file = str(CONTEXTUALIZED_CHUNKS_JSON)
     model_name = "BAAI/bge-base-en-v1.5"
     index_name = "business-docs-index"
     

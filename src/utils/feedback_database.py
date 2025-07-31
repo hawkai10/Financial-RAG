@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 import os
 from collections import defaultdict, Counter
-from utils import safe_mean, safe_divide, extract_keywords
+from .utils import safe_mean, safe_divide, extract_keywords
+from .paths import FEEDBACK_DB
 
 def sanitize_for_json(obj):
     """Sanitize data for JSON serialization by converting numpy types to Python types."""
@@ -325,8 +326,8 @@ class AdvancedAnalytics:
 class EnhancedFeedbackDatabase:
     """Enhanced feedback database with advanced analytics."""
 
-    def __init__(self, db_path: str = "feedback.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        self.db_path = db_path or str(FEEDBACK_DB)
         self.analytics = AdvancedAnalytics(self)
         self.init_database()
 

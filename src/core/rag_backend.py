@@ -19,19 +19,20 @@ from rank_bm25 import BM25Okapi
 import requests as http_requests  # Use alias to avoid conflicts
 
 # Import configurations and utilities
-from config import config
-from utils import (
+from ..utils.config import config
+from ..utils.paths import CHUNKS_DB
+from ..utils.utils import (
     logger, validate_and_sanitize_query, create_query_hash,
     RateLimiter, safe_mean, QueryAnalyzer, assess_chunk_quality,
     calculate_cost_reduction, sanitize_for_json
 )
 
 # Import enhanced modules
-from feedback_database import EnhancedFeedbackDatabase
-from progressive_retrieval import ProgressiveRetriever
-from aggregation_optimizer import AggregationOptimizer
-from prompt_templates import PromptBuilder
-from unified_query_processor import unified_processor
+from ..utils.feedback_database import EnhancedFeedbackDatabase
+from ..processors.progressive_retrieval import ProgressiveRetriever
+from ..processors.aggregation_optimizer import AggregationOptimizer
+from ..utils.prompt_templates import PromptBuilder
+from ..processors.unified_query_processor import unified_processor
 
 # ============================================================
 # OPTIMIZATION CLASSES
@@ -286,7 +287,7 @@ query_analyzer = QueryAnalyzer()
 # Initialize optimization instances
 chunk_cache = SmartChunkCache(max_size=500)
 embedding_cache = SmartEmbeddingCache()
-db_pool = ConnectionPool("chunks.db", pool_size=10)
+db_pool = ConnectionPool(str(CHUNKS_DB), pool_size=10)
 
 # Custom exceptions
 class GeminiAPIError(Exception):
@@ -1319,7 +1320,7 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
         
         if should_use_hierarchical:
             # Use enhanced strategy-aware hierarchical processing
-            from hierarchical_processor import HierarchicalProcessor, ProcessingConfig
+            from ..processors.hierarchical_processor import HierarchicalProcessor, ProcessingConfig
             
             # Create LLM function wrapper for hierarchical processor
             def llm_function(prompt: str, batch_chunks: List[Dict]) -> str:

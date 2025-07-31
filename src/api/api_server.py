@@ -18,9 +18,9 @@ from typing import Dict, List, Any
 from txtai import Embeddings
 
 # Import your existing RAG functions
-from rag_backend import rag_query_enhanced, call_gemini_enhanced
-from config import config
-from utils import logger, validate_and_sanitize_query
+from ..core.rag_backend import rag_query_enhanced, call_gemini_enhanced
+from ..utils.config import config
+from ..utils.utils import logger, validate_and_sanitize_query
 
 # Import pipeline orchestrator
 from pipeline_orchestrator import ensure_data_pipeline_up_to_date

@@ -1,8 +1,10 @@
 import sqlite3
 import os
-from utils import logger
+from .utils import logger
+from .paths import FEEDBACK_DB
 
-def migrate_database_complete(db_path: str = "feedback.db"):
+def migrate_database_complete(db_path: str = None):
+    db_path = db_path or str(FEEDBACK_DB)
     """Complete database migration for Phase 1 enhancements."""
     
     if not os.path.exists(db_path):

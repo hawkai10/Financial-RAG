@@ -106,7 +106,7 @@ def main():
     
     try:
         # Import our enhanced modules
-        from hierarchical_processor import (
+        from ..src.processors.hierarchical_processor import (
             HierarchicalProcessor, 
             ProcessorFactory, 
             create_enhanced_processor,
@@ -116,7 +116,7 @@ def main():
         )
         logger.info("Successfully imported all enhanced processor classes")
         
-        from config import Config
+        from ..src.utils.config import Config
         config = Config()
         logger.info("Configuration loaded successfully")
         
@@ -124,7 +124,7 @@ def main():
         logger.error(f"❌ Import error: {e}")
         print("⚠️ Some enhanced features may not be available")
         # Create basic processor as fallback
-        from hierarchical_processor import HierarchicalProcessor
+        from ..src.processors.hierarchical_processor import HierarchicalProcessor
         
     log_step(2, "QUERY SETUP", "Preparing test query and mock data")
     

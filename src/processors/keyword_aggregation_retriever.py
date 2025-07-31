@@ -2,7 +2,7 @@ import re
 from typing import List, Dict, Set, Any
 from collections import Counter
 from txtai import Embeddings
-from utils import logger
+from ..utils.utils import logger
 import json
 
 class KeywordAggregationRetriever:

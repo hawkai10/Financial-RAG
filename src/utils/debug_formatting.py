@@ -3,8 +3,8 @@
 Debug script to test AI response formatting
 """
 
-from api_server import format_ai_response
-from utils import logger
+from ..api.api_server import format_ai_response
+from .utils import logger
 
 def test_response_formatting():
     """Test the AI response formatting with sample problematic responses"""

@@ -11,7 +11,7 @@ import logging
 import traceback
 
 # Import your existing modules
-from api_server import (
+from .api_server import (
     app, embeddings, logger, validate_and_sanitize_query, 
     format_chunks_for_ui, format_ai_response, rag_query_enhanced
 )

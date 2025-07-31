@@ -7,10 +7,14 @@ This script creates the chunks.db file and tables if they don't exist.
 import sqlite3
 import os
 import json
-from utils import logger
+from .utils import logger
+from .paths import CHUNKS_DB, CONTEXTUALIZED_CHUNKS_JSON
 
-def create_chunks_database(db_path: str = "chunks.db", chunks_file: str = "contextualized_chunks.json"):
+def create_chunks_database(db_path: str = None, chunks_file: str = None):
     """Create chunks database and populate from JSON file."""
+    
+    db_path = db_path or str(CHUNKS_DB)
+    chunks_file = chunks_file or str(CONTEXTUALIZED_CHUNKS_JSON)
     
     logger.info(f"Creating chunks database at: {db_path}")
     
@@ -90,8 +94,10 @@ def create_chunks_database(db_path: str = "chunks.db", chunks_file: str = "conte
     finally:
         conn.close()
 
-def verify_database(db_path: str = "chunks.db"):
-    """Verify the database was created correctly."""
+def verify_database(db_path: str = None):
+    """Verify that the database exists and has the correct structure."""
+    
+    db_path = db_path or str(CHUNKS_DB)
     if not os.path.exists(db_path):
         logger.error(f"Database file {db_path} does not exist")
         return False

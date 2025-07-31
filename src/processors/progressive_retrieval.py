@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Dict, List, Tuple, Any
 from txtai import Embeddings
-from config import config
-from utils import logger, assess_chunk_quality
+from ..utils.config import config
+from ..utils.utils import logger, assess_chunk_quality
 
 class ProgressiveRetriever:
     """Implements intelligent two-stage retrieval for cost optimization."""
@@ -96,7 +96,7 @@ class ProgressiveRetriever:
         """Stage 1: Initial retrieval with minimal chunks."""
         try:
             # Import the enhanced functions with proper handling
-            from rag_backend import simple_retrieve_enhanced, get_chunk_by_id_enhanced
+            from ..core.rag_backend import simple_retrieve_enhanced, get_chunk_by_id_enhanced
             
             # Use the first query for initial retrieval
             results, retrieval_info = simple_retrieve_enhanced(
@@ -123,7 +123,7 @@ class ProgressiveRetriever:
                          existing_results: List[Dict]) -> List[Dict]:
         """Stage 2: Expand retrieval with additional chunks."""
         try:
-            from rag_backend import simple_retrieve_enhanced, get_chunk_by_id_enhanced
+            from ..core.rag_backend import simple_retrieve_enhanced, get_chunk_by_id_enhanced
             
             # Use remaining queries or generate new variations
             search_queries = queries[1:] if len(queries) > 1 else [queries[0]]

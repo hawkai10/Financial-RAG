@@ -5,7 +5,7 @@ Eliminates code duplication and provides consistent prompt management
 
 from typing import Dict, List, Optional
 from dataclasses import dataclass
-from utils import logger
+from .utils import logger
 
 @dataclass
 class PromptTemplate:

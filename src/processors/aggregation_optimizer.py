@@ -1,8 +1,8 @@
 import random
 import numpy as np
 from typing import Dict, List, Any
-from config import config
-from utils import logger
+from ..utils.config import config
+from ..utils.utils import logger
 
 class AggregationOptimizer:
     """Optimizes aggregation queries through intelligent sampling and estimation."""

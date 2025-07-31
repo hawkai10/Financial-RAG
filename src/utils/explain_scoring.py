@@ -6,7 +6,7 @@ import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
 from txtai import Embeddings
-from rag_backend import rag_query_enhanced
+from ..core.rag_backend import rag_query_enhanced
 
 def explain_scoring_system():
     print("=" * 80)
