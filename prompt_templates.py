@@ -3,6 +3,23 @@ Centralized prompt template system for DocuChat AI
 Eliminates code duplication and provides consistent prompt management
 """
 
+import sys
+import os
+import logging
+
+# Fix Unicode logging issues
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+# Reconfigure logging with UTF-8 support
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+    ],
+    force=True
+)
+
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from utils import logger
@@ -63,86 +80,80 @@ Provide a clear, well-structured response.""",
     
     def build_prompt(self, template_name: str, question: str, 
                     context_chunks: List[Dict], **kwargs) -> str:
-        """Build a complete prompt from template and inputs."""
-        
+        """Build a complete prompt from template and inputs with enhanced debugging."""
         try:
-            print(f"DEBUG PromptBuilder: build_prompt called with template_name={template_name}")
-            print(f"DEBUG PromptBuilder: question={question[:50]}...")
-            print(f"DEBUG PromptBuilder: chunks count={len(context_chunks)}")
+            logger.info(f"DEBUG: PromptBuilder.build_prompt called")
+            logger.info(f"   Template: {template_name}")
+            logger.info(f"   Question: {question[:100]}...")
+            logger.info(f"   Chunks: {len(context_chunks)}")
             
-            # Check if template exists in templates
-            if hasattr(self, 'templates'):
-                print(f"DEBUG PromptBuilder: Available templates: {list(self.templates.keys())}")
-                
-                if template_name in self.templates:
-                    template = self.templates[template_name]
-                    print(f"DEBUG PromptBuilder: Found template for {template_name}")
-                    print(f"DEBUG PromptBuilder: Template type: {type(template)}")
-                    print(f"DEBUG PromptBuilder: Template: {template}")
-                    
-                    # Handle special cases
-                    if template_name == "query_correction":
-                        result = f"{template.instruction} {question}"
-                        print(f"DEBUG PromptBuilder: ✅ Query correction template succeeded")
-                        return result
-                    
-                    if template_name == "multiquery_generation":
-                        num_queries = kwargs.get('num_queries', 2)
-                        instruction = template.instruction.format(num_queries=num_queries)
-                        result = f"{instruction}\n{template.context_prefix} {question}\n{template.format_instructions}"
-                        print(f"DEBUG PromptBuilder: ✅ Multiquery generation template succeeded")
-                        return result
-                    
-                    # Build context from chunks
-                    print(f"DEBUG PromptBuilder: About to call _build_context with {len(context_chunks)} chunks")
-                    context = self._build_context(context_chunks, template.max_context_length)
-                    print(f"DEBUG PromptBuilder: ✅ _build_context succeeded, context length: {len(context)}")
-                    
-                    # LOG: Context details for debugging
-                    context_summary = ""
-                    for i, chunk in enumerate(context_chunks[:3]):  # Show first 3 chunks
-                        text = chunk.get("text", "") or chunk.get("chunk_text", "")
-                        doc_name = chunk.get("document_name", "Unknown")
-                        context_summary += f"Chunk {i+1}: {doc_name} - {len(text)} chars - Preview: {text[:150]}...\n"
-                    if len(context_chunks) > 3:
-                        context_summary += f"... and {len(context_chunks) - 3} more chunks\n"
-                    
-                    # LLM LOG DISABLED - log_llm_interaction(
-                    #     phase="CONTEXT_BUILDING",
-                    #     content=context,
-                    #     template=template_name,
-                    #     chunks_count=len(context_chunks),
-                    #     context_length=len(context),
-                    #     chunks_summary=context_summary
-                    # )
-                    
-                    # Construct full prompt
-                    prompt_parts = [
-                        template.instruction,
-                        "",
-                        f"{template.context_prefix}",
-                        context,
-                        "",
-                        f"{template.question_prefix} {question}",
-                        "",
-                        template.format_instructions
-                    ]
-                    
-                    result = "\n".join(part for part in prompt_parts if part)
-                    print(f"DEBUG PromptBuilder: ✅ Template building succeeded, final prompt length: {len(result)}")
-                    return result
+            # Check chunks validity
+            valid_chunks = []
+            for i, chunk in enumerate(context_chunks):
+                text = chunk.get("text", "") or chunk.get("chunk_text", "")
+                doc_name = chunk.get("document_name", "Unknown")
+                if text and text.strip():
+                    valid_chunks.append(chunk)
+                    logger.info(f"   Valid chunk {i+1}: {doc_name} ({len(text)} chars)")
                 else:
-                    print(f"DEBUG PromptBuilder: ❌ Template {template_name} not found in templates")
-                    raise ValueError(f"Unknown template: {template_name}")
-            else:
-                print("DEBUG PromptBuilder: ❌ No templates attribute found")
-                raise AttributeError("PromptBuilder has no templates attribute")
-                
+                    logger.warning(f"   Empty chunk {i+1}: {doc_name}")
+            
+            if not valid_chunks:
+                logger.error("   CRITICAL: No valid chunks for prompt building!")
+                return "No valid document content available."
+            
+            logger.info(f"   Using {len(valid_chunks)} valid chunks")
+            
+            # Get template
+            if template_name not in self.templates:
+                logger.error(f"   Template '{template_name}' not found!")
+                raise ValueError(f"Unknown template: {template_name}")
+            
+            template = self.templates[template_name]
+            logger.info(f"   Template found: {template_name}")
+            
+            # Handle special cases
+            if template_name == "query_correction":
+                result = f"{template.instruction} {question}"
+                logger.info(f"   Query correction template succeeded")
+                return result
+            
+            if template_name == "multiquery_generation":
+                num_queries = kwargs.get('num_queries', 2)
+                instruction = template.instruction.format(num_queries=num_queries)
+                result = f"{instruction}\n{template.context_prefix} {question}\n{template.format_instructions}"
+                logger.info(f"   Multiquery generation template succeeded")
+                return result
+            
+            # Build context
+            logger.info(f"   Building context...")
+            context = self._build_context(valid_chunks, template.max_context_length)
+            logger.info(f"   Context built: {len(context)} characters")
+            logger.info(f"   Context preview: {context[:200]}...")
+            
+            # Construct full prompt
+            prompt_parts = [
+                template.instruction,
+                "",
+                f"{template.context_prefix}",
+                context,
+                "",
+                f"{template.question_prefix} {question}",
+                "",
+                template.format_instructions
+            ]
+            
+            result = "\n".join(part for part in prompt_parts if part)
+            logger.info(f"   Final prompt built: {len(result)} characters")
+            logger.info(f"   Final prompt preview: {result[:300]}...")
+            
+            return result
+            
         except Exception as e:
-            print(f"DEBUG PromptBuilder: ❌ build_prompt FAILED: {e}")
-            print(f"DEBUG PromptBuilder: Error type: {type(e)}")
+            logger.error(f"   PromptBuilder failed: {e}")
+            logger.error(f"   Exception type: {type(e).__name__}")
             import traceback
-            print(f"DEBUG PromptBuilder: Traceback:\n{traceback.format_exc()}")
+            logger.error(f"   Full traceback: {traceback.format_exc()}")
             raise e
     
     def _build_context(self, chunks: List[Dict], max_length: int) -> str:

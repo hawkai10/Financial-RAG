@@ -4,7 +4,23 @@ Simple Flask API server to bridge the React UI with the RAG backend.
 This creates REST endpoints that the UI can call.
 """
 
+import sys
 import os
+import logging
+
+# Fix Unicode logging issues
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+# Reconfigure logging with UTF-8 support
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+    ],
+    force=True
+)
+
 # Fix OpenMP conflict warning
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 

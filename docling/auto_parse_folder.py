@@ -16,8 +16,8 @@ import hashlib
 from txtai import Embeddings
 from tqdm import tqdm
 
-# Path to the folder containing source documents
-SOURCE_DIR = Path(r"C:\Users\arvin\OneDrive\Desktop\trial\docling\Source_Documents")
+# Path to the folder containing source documents - Fixed to use relative path
+SOURCE_DIR = Path(__file__).parent.parent / "Source_Documents"
 
 # Output files for contextualized chunks
 OUTPUT_JSON = "contextualized_chunks.json"

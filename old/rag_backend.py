@@ -361,48 +361,8 @@ smart_cache = EnhancedSmartCache()
 def call_gemini_enhanced(prompt: str, **kwargs) -> str:
     """Enhanced Gemini API call with optimization."""
     try:
-        import requests
-        import json
-        from config import config
-        
-        # Direct API call
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                headers = {"Content-Type": "application/json"}
-                params = {"key": config.GEMINI_API_KEY}
-                data = {
-                    "contents": [
-                        {"role": "user", "parts": [{"text": prompt}]}
-                    ]
-                }
-                
-                response = requests.post(
-                    config.GEMINI_API_URL,
-                    headers=headers,
-                    params=params,
-                    json=data,
-                    timeout=30
-                )
-                
-                response.raise_for_status()
-                result = response.json()
-                
-                if ("candidates" in result and 
-                    result["candidates"] and
-                    "content" in result["candidates"][0] and
-                    "parts" in result["candidates"][0]["content"]):
-                    
-                    return result["candidates"][0]["content"]["parts"][0]["text"]
-                else:
-                    raise Exception("Invalid response format from Gemini API")
-                    
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    raise e
-                logger.warning(f"Gemini API attempt {attempt + 1} failed: {e}")
-                time.sleep(1)
-        
+        # Use existing call_gemini function from prompt_templates
+        return prompt_builder.call_gemini(prompt, **kwargs)
     except Exception as e:
         logger.error(f"Enhanced Gemini call failed: {e}")
         raise GeminiAPIError(f"API call failed: {e}")
@@ -565,7 +525,7 @@ def synthesize_answer_enhanced(question: str, chunks: List[Dict[str, Any]],
         
         context = "\n".join(context_parts)
         
-        # Strategy-specific prompts with natural language formatting
+        # Strategy-specific prompts
         if strategy == "Aggregation":
             prompt = f"""Based on the following documents, provide a comprehensive aggregation for: "{question}"
 
@@ -576,20 +536,12 @@ CONTEXT:
 
 INSTRUCTIONS:
 - List every relevant item found
-- Include specific values, amounts, dates, and references  
+- Include specific values, amounts, dates, and references
 - Group similar items but preserve individual instances
+- Cite source documents for each item
 - Provide totals or summaries where appropriate
-- Use clear, natural language formatting
 
-FORMATTING GUIDELINES:
-- Use clear headings and sections
-- Present data in well-structured tables when appropriate
-- Use bullet points for lists
-- Write in a professional, readable format
-- Do NOT use HTML tags or markup
-- Provide clean, properly spaced text output
-
-Please provide a clear, well-structured answer in natural language:"""
+ANSWER:"""
         
         elif strategy == "Analyse":
             prompt = f"""Analyze the following documents to answer: "{question}"
@@ -604,15 +556,7 @@ TASK: Provide a detailed analysis including:
 - Supporting evidence from the documents
 - Actionable conclusions
 
-FORMATTING GUIDELINES:
-- Use clear section headings
-- Write in well-structured paragraphs
-- Use bullet points for key findings
-- Present data clearly and professionally
-- Do NOT use HTML tags or markup
-- Provide clean, properly spaced text output
-
-Please provide a clear, well-structured analysis in natural language:"""
+ANSWER:"""
         
         else:  # Standard
             prompt = f"""Answer the following question based on the provided context: "{question}"
@@ -622,14 +566,7 @@ CONTEXT:
 
 Please provide a clear, accurate answer based on the information above. If you cannot find specific information to answer the question, please state that clearly.
 
-FORMATTING GUIDELINES:
-- Write in clear, natural language
-- Use proper spacing and structure
-- Present information in a readable format
-- Do NOT use HTML tags or markup
-- Provide clean, well-formatted text
-
-Please provide a clear answer in natural language:"""
+ANSWER:"""
         
         # Call Gemini API
         response = call_gemini_enhanced(prompt)
@@ -637,103 +574,11 @@ Please provide a clear answer in natural language:"""
         if not response or len(response.strip()) < 10:
             return "I was unable to generate a comprehensive answer based on the available information."
         
-        # Clean and format the HTML response for UI display
-        formatted_response = _format_html_response(response.strip(), strategy)
-        return formatted_response
+        return response.strip()
         
     except Exception as e:
         logger.error(f"Answer synthesis failed: {e}")
         return f"I encountered an error while processing your question: {str(e)}"
-
-def _format_html_response(response: str, strategy: str) -> str:
-    """Format the LLM response for proper HTML display in UI."""
-    
-    # Clean up any HTML artifacts that might be causing display issues
-    cleaned_response = response
-    
-    # Remove HTML code block markers
-    cleaned_response = cleaned_response.replace('```html', '')
-    cleaned_response = cleaned_response.replace('```', '')
-    
-    # Remove extra paragraph tags that are being displayed
-    cleaned_response = cleaned_response.replace('<p><p>', '<p>')
-    cleaned_response = cleaned_response.replace('</p></p>', '</p>')
-    
-    # Remove any standalone HTML comments or artifacts
-    import re
-    cleaned_response = re.sub(r'<p>\s*</p>', '', cleaned_response)  # Remove empty paragraphs
-    cleaned_response = re.sub(r'\n\s*\n', '\n', cleaned_response)  # Remove multiple newlines
-    
-    # If response already contains HTML tags, just clean and return
-    if any(tag in cleaned_response for tag in ['<table>', '<td>', '<h1>', '<h2>', '<h3>', '<p>', '<ul>', '<li>']):
-        return cleaned_response.strip()
-    
-    # For natural language responses, convert to clean HTML
-    lines = cleaned_response.split('\n')
-    formatted_lines = []
-    in_table_section = False
-    
-    for line in lines:
-        line = line.strip()
-        if not line:
-            formatted_lines.append('<br>')
-            continue
-            
-        # Check if this looks like a table header or data
-        if ('|' in line or 
-            line.lower().startswith(('document', 'invoice', 'amount', 'date', 'company')) and 
-            ('no.' in line.lower() or 'amount' in line.lower() or 'date' in line.lower())):
-            
-            # Start table formatting for structured data
-            if not in_table_section:
-                formatted_lines.append('<table class="table table-striped">')
-                in_table_section = True
-            
-            # Format as table row
-            if '|' in line:
-                cells = [cell.strip() for cell in line.split('|')]
-                formatted_lines.append('<tr>')
-                for cell in cells:
-                    if cell:  # Skip empty cells
-                        formatted_lines.append(f'<td>{cell}</td>')
-                formatted_lines.append('</tr>')
-            else:
-                # Single line data, treat as table row
-                formatted_lines.append(f'<tr><td colspan="4">{line}</td></tr>')
-        
-        else:
-            # End table if we were in one
-            if in_table_section:
-                formatted_lines.append('</table>')
-                in_table_section = False
-            
-            # Format other content types
-            if (line.lower().startswith(('total', 'summary', 'conclusion')) or 
-                '**' in line or line.isupper()):
-                # Important information - make it stand out
-                formatted_lines.append(f'<p><strong>{line.replace("**", "")}</strong></p>')
-            elif line.endswith(':') and len(line) < 100:
-                # Looks like a heading
-                formatted_lines.append(f'<h4>{line}</h4>')
-            elif line.startswith(('- ', '• ', '* ')):
-                # List item
-                formatted_lines.append(f'<li>{line[2:].strip()}</li>')
-            elif line.startswith(tuple(str(i) + '.' for i in range(1, 10))):
-                # Numbered list
-                formatted_lines.append(f'<li>{line[2:].strip()}</li>')
-            else:
-                # Regular paragraph
-                formatted_lines.append(f'<p>{line}</p>')
-    
-    # Close table if still open
-    if in_table_section:
-        formatted_lines.append('</table>')
-    
-    # Wrap list items in ul tags
-    result = '\n'.join(formatted_lines)
-    result = re.sub(r'(<li>.*?</li>)', r'<ul>\1</ul>', result, flags=re.DOTALL)
-    
-    return result
 
 @smart_cache.cache_query_result(ttl_hours=1)
 def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
@@ -1119,29 +964,6 @@ def generate_multiqueries(query: str) -> List[str]:
         return [processed['corrected_query']] + processed['alternative_queries']
     except:
         return [query]
-
-def get_document_catalog_enhanced(chunks: List[Dict]) -> Dict:
-    """Enhanced document catalog generation."""
-    if not chunks:
-        return {"documents": [], "total_count": 0}
-    
-    doc_catalog = {}
-    for chunk in chunks:
-        doc_name = chunk.get('document_name', 'Unknown')
-        if doc_name not in doc_catalog:
-            doc_catalog[doc_name] = {
-                'name': doc_name,
-                'chunks': 0,
-                'total_tokens': 0
-            }
-        doc_catalog[doc_name]['chunks'] += 1
-        doc_catalog[doc_name]['total_tokens'] += chunk.get('num_tokens', 0)
-    
-    return {
-        "documents": list(doc_catalog.values()),
-        "total_count": len(doc_catalog),
-        "total_chunks": len(chunks)
-    }
 
 def get_document_catalog(chunks: List[Dict]) -> Dict:
     """Legacy function for backward compatibility."""

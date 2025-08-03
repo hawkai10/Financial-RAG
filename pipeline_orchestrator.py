@@ -13,8 +13,8 @@ from datetime import datetime
 import sqlite3
 from tqdm import tqdm
 
-# Configuration
-SOURCE_DIR = Path(r"C:\Users\arvin\OneDrive\Desktop\trial\docling\Source_Documents")
+# Configuration - Fixed to use relative path from project root
+SOURCE_DIR = Path(__file__).parent / "Source_Documents"
 MANIFEST_FILE = "source_manifest.json"
 CHUNKS_DB = "chunks.db"
 CONTEXTUALIZED_JSON = "contextualized_chunks.json"

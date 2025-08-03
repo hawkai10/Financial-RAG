@@ -1,4 +1,20 @@
+import sys
+import os
 import logging
+
+# Fix Unicode logging issues
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+# Reconfigure logging with UTF-8 support
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+    ],
+    force=True
+)
+
 import hashlib
 import re
 import numpy as np
@@ -8,14 +24,6 @@ from time import time
 from collections import defaultdict, Counter
 from config import sanitize_for_json
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('rag_app.log'),
-        logging.StreamHandler()
-    ]
-)
 logger = logging.getLogger(__name__)
 
 import time
@@ -40,9 +48,9 @@ class TimingLogger:
                 
                 # Log function start
                 if log_args:
-                    self.logger.info(f"🚀 STARTING: {desc} with args: {args[:2]}...")
+                    self.logger.info(f"STARTING: {desc} with args: {args[:2]}...")
                 else:
-                    self.logger.info(f"🚀 STARTING: {desc}")
+                    self.logger.info(f"STARTING: {desc}")
                 
                 start_time = time.time()
                 
@@ -75,7 +83,7 @@ class TimingLogger:
     @contextmanager
     def time_block(self, description: str):
         """Context manager for timing code blocks."""
-        self.logger.info(f"🚀 STARTING: {description}")
+        self.logger.info(f"STARTING: {description}")
         start_time = time.time()
         
         try:
@@ -106,7 +114,7 @@ class TimingLogger:
         if not self.timings:
             return
             
-        self.logger.info("📊 TIMING SUMMARY:")
+        self.logger.info("TIMING SUMMARY:")
         self.logger.info("-" * 50)
         
         sorted_timings = sorted(self.timings.items(), key=lambda x: x[1], reverse=True)

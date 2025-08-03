@@ -29,6 +29,7 @@ class Config:
     # File Paths
     INDEX_PATH: str = "business-docs-index"
     CHUNKS_FILE: str = "contextualized_chunks.json"
+    CONTEXTUALIZED_CHUNKS_JSON: str = "contextualized_chunks.json"
     
     # Processing Limits
     MAX_CONTEXT_LENGTH: int = 4000
@@ -58,8 +59,8 @@ class Config:
     })
     
     # Feature Flags
-    PROGRESSIVE_RETRIEVAL_ENABLED: bool = True
-    SAMPLING_AGGREGATION_ENABLED: bool = True
+    PROGRESSIVE_RETRIEVAL_ENABLED: bool = False  # Disabled: Now using full retrieval with score filtering
+    SAMPLING_AGGREGATION_ENABLED: bool = False   # Disabled: Using score filtering instead of sampling
     HYBRID_SEARCH_ENABLED: bool = True
     HIERARCHICAL_PROCESSING_ENABLED: bool = True
     
@@ -81,7 +82,7 @@ class Config:
     # BM25 Parameters
     BM25_K1: float = 1.2
     BM25_B: float = 0.75
-    HYBRID_ALPHA: float = 0.7
+    HYBRID_ALPHA: float = 0.6  # Changed from 0.7 to 0.6 (Dense: 60%, Sparse: 40%)
     
     # Sampling Parameters
     AGGREGATION_SAMPLING_THRESHOLD: int = 8
