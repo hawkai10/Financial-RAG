@@ -7,6 +7,7 @@ This creates REST endpoints that the UI can call.
 import sys
 import os
 import logging
+import asyncio
 
 # Fix Unicode logging issues
 os.environ['PYTHONIOENCODING'] = 'utf-8'
@@ -202,7 +203,7 @@ Instructions:
 
 Question:"""
 
-                response = call_gemini_enhanced(prompt, strategy="Standard")
+                response = asyncio.run(call_gemini_enhanced(prompt, strategy="Standard"))
                 if response and response.strip():
                     question = response.strip()
                     # Ensure it ends with a question mark
@@ -336,17 +337,94 @@ def format_ai_response(raw_response: str) -> Dict[str, Any]:
         }
     
     try:
+        import re
+        
         # Clean the response
         cleaned_response = raw_response.strip()
         
-        # Remove excessive markdown formatting
-        cleaned_response = cleaned_response.replace('**', '')
-        cleaned_response = cleaned_response.replace('*', '')
+        # Convert HTML to readable text with proper formatting
+        # Replace HTML tags with appropriate plain text formatting
         
-        # Simple approach: use the full response as one item
-        # Extract summary from first line or first 150 characters
+        # Convert paragraphs
+        cleaned_response = re.sub(r'<p>(.*?)</p>', r'\1\n\n', cleaned_response, flags=re.DOTALL)
+        
+        # Enhanced table handling - preserve markdown table structure
+        # First, handle HTML tables by converting them to markdown format
+        def convert_html_table_to_markdown(match):
+            table_content = match.group(1)
+            rows = re.findall(r'<tr>(.*?)</tr>', table_content, flags=re.DOTALL)
+            markdown_rows = []
+            
+            for i, row in enumerate(rows):
+                cells = re.findall(r'<t[hd]>(.*?)</t[hd]>', row, flags=re.DOTALL)
+                if cells:
+                    # Clean cell content and join with pipes
+                    clean_cells = [re.sub(r'<[^>]+>', '', cell).strip() for cell in cells]
+                    markdown_row = '| ' + ' | '.join(clean_cells) + ' |'
+                    markdown_rows.append(markdown_row)
+                    
+                    # Add header separator after first row
+                    if i == 0:
+                        separator = '| ' + ' | '.join(['---'] * len(clean_cells)) + ' |'
+                        markdown_rows.append(separator)
+            
+            return '\n'.join(markdown_rows) + '\n\n'
+        
+        # Convert HTML tables to markdown
+        cleaned_response = re.sub(r'<table[^>]*>(.*?)</table>', convert_html_table_to_markdown, cleaned_response, flags=re.DOTALL)
+        
+        # Handle table rows that aren't in full table tags
+        cleaned_response = re.sub(r'<tr>(.*?)</tr>', r'\1\n', cleaned_response, flags=re.DOTALL)
+        # Handle table cells with pipes - be more careful with spacing
+        cleaned_response = re.sub(r'<td[^>]*>(.*?)</td>', r'| \1 ', cleaned_response, flags=re.DOTALL)
+        cleaned_response = re.sub(r'<th[^>]*>(.*?)</th>', r'| \1 ', cleaned_response, flags=re.DOTALL)
+        
+        # Convert strong/bold tags
+        cleaned_response = re.sub(r'<strong>(.*?)</strong>', r'**\1**', cleaned_response, flags=re.DOTALL)
+        cleaned_response = re.sub(r'<b>(.*?)</b>', r'**\1**', cleaned_response, flags=re.DOTALL)
+        
+        # Convert lists
+        cleaned_response = re.sub(r'<li>(.*?)</li>', r'• \1\n', cleaned_response, flags=re.DOTALL)
+        cleaned_response = re.sub(r'<ul[^>]*>(.*?)</ul>', r'\1\n', cleaned_response, flags=re.DOTALL)
+        cleaned_response = re.sub(r'<ol[^>]*>(.*?)</ol>', r'\1\n', cleaned_response, flags=re.DOTALL)
+        
+        # Remove any remaining HTML tags but preserve content
+        cleaned_response = re.sub(r'<[^>]+>', '', cleaned_response)
+        
+        # Fix common formatting issues
+        # Remove excessive whitespace but preserve table structure
+        cleaned_response = re.sub(r'[ \t]+', ' ', cleaned_response)  # Multiple spaces/tabs to single space
+        cleaned_response = re.sub(r'\n\s*\n\s*\n+', '\n\n', cleaned_response)  # Multiple newlines to double
+        
+        # Fix table formatting issues
         lines = cleaned_response.split('\n')
-        first_line = lines[0].strip() if lines else cleaned_response
+        fixed_lines = []
+        for line in lines:
+            if '|' in line and not line.strip().startswith('|'):
+                # Fix broken table rows
+                line = '| ' + line.strip() + ' |'
+            elif '|' in line:
+                # Clean up existing table rows
+                line = re.sub(r'\|\s*\|', '| |', line)  # Fix empty cells
+                line = re.sub(r'\s*\|\s*', ' | ', line)  # Standardize spacing
+            fixed_lines.append(line)
+        
+        cleaned_response = '\n'.join(fixed_lines)
+        cleaned_response = cleaned_response.strip()
+        
+        # Ensure we don't truncate the response
+        if len(cleaned_response) > 10000:  # Only truncate if extremely long
+            logger.warning("Response is very long, considering truncation")
+            # Find a good break point (end of paragraph or table)
+            truncate_at = 9500
+            while truncate_at < len(cleaned_response) and cleaned_response[truncate_at] not in '\n\r':
+                truncate_at += 1
+            if truncate_at < len(cleaned_response):
+                cleaned_response = cleaned_response[:truncate_at] + "\n\n[Response truncated for display...]"
+        
+        # Extract summary from first line or first paragraph
+        lines = [line.strip() for line in cleaned_response.split('\n') if line.strip()]
+        first_line = lines[0] if lines else cleaned_response[:100]
         
         # Create summary from first meaningful line
         summary = first_line
@@ -365,12 +443,14 @@ def format_ai_response(raw_response: str) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"Error formatting AI response: {e}")
-        # Fallback - return raw response
+        # Fallback - return raw response with basic HTML cleanup
+        import re
+        fallback_text = re.sub(r'<[^>]+>', '', raw_response)
         return {
             'summary': 'Analysis complete',
             'items': [{
                 'title': 'Response',
-                'text': raw_response,
+                'text': fallback_text,
                 'references': []
             }]
         }
@@ -417,15 +497,32 @@ def search():
         # Try the full RAG pipeline first (main method)
         try:
             logger.info("[RAG] Attempting enhanced RAG search...")
-            result = rag_query_enhanced(
-                question=sanitized_query,
-                embeddings=embeddings,
-                topn=10,
-                filters=None,
-                enable_reranking=True,
-                session_id=None,
-                enable_optimization=True
-            )
+            
+            # Use a thread pool executor to run the async function
+            import concurrent.futures
+            import asyncio
+            
+            def run_async_rag():
+                # Create a new event loop for this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    return loop.run_until_complete(rag_query_enhanced(
+                        question=sanitized_query,
+                        embeddings=embeddings,
+                        topn=10,
+                        filters=None,
+                        enable_reranking=True,
+                        session_id=None,
+                        enable_optimization=True
+                    ))
+                finally:
+                    loop.close()
+            
+            # Run in a separate thread to avoid event loop conflicts
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_async_rag)
+                result = future.result(timeout=30)  # 30 second timeout
             logger.info(f"RAG result type: {type(result)}")
             logger.info(f"RAG result keys (if dict): {result.keys() if isinstance(result, dict) else 'Not a dict'}")
             
@@ -479,39 +576,87 @@ def search():
             logger.info("[FALLBACK] Falling back to simple txtai search...")
             try:
                 # Direct txtai search as fallback
+                logger.info(f"[DEBUG] About to search embeddings for: {sanitized_query}")
                 simple_results = embeddings.search(sanitized_query, limit=10)
-                logger.info(f"Simple txtai search returned {len(simple_results)} results")
+                logger.info(f"[DEBUG] Simple txtai search returned {len(simple_results)} results")
+                logger.info(f"First result type: {type(simple_results[0]) if simple_results else 'No results'}")
+                logger.info(f"First result content: {simple_results[0] if simple_results else 'No results'}")
                 
                 # Create simple chunks from txtai results
                 simple_chunks = []
+                logger.info(f"Processing {len(simple_results)} txtai results")
+                
                 for i, result in enumerate(simple_results):
-                    if isinstance(result, tuple) and len(result) >= 2:
-                        text, score = result[0], result[1]
+                    try:
+                        # txtai returns a dictionary with 'text' and score
+                        if isinstance(result, dict):
+                            text = result.get('text', str(result))
+                            score = result.get('score', 0.0)
+                        elif isinstance(result, tuple) and len(result) >= 2:
+                            text, score = result[0], result[1]
+                        elif isinstance(result, str):
+                            text = result
+                            score = 0.0
+                        else:
+                            # Convert whatever it is to string
+                            text = str(result)
+                            score = 0.0
+                        
+                        # Create chunk in expected format
                         chunk = {
                             'chunk_id': f'simple_{i}',
                             'text': text,
                             'chunk_text': text,
                             'document_name': f'Document_{i+1}.pdf',
-                            'score': score
+                            'score': float(score),
+                            'source_file': f'search_result_{i+1}',
+                            'page_number': 1
                         }
                         simple_chunks.append(chunk)
-                    elif isinstance(result, str):
-                        chunk = {
-                            'chunk_id': f'simple_{i}',
-                            'text': result,
-                            'chunk_text': result,
-                            'document_name': f'Document_{i+1}.pdf',
-                            'score': 0.0
-                        }
-                        simple_chunks.append(chunk)
+                        logger.info(f"Created chunk {i}: {len(text)} chars, score: {score}")
+                        
+                    except Exception as chunk_error:
+                        logger.error(f"Error processing result {i}: {chunk_error}")
+                        logger.error(f"Result content: {result}")
+                        continue
+                
+                logger.info(f"Created {len(simple_chunks)} simple chunks")
                 
                 # Format chunks for UI
                 documents = format_chunks_for_ui(simple_chunks)
                 
                 # Create simple AI response using proper formatting
                 if documents:
-                    context_text = '\n\n'.join([chunk.get('text', '')[:200] for chunk in simple_chunks[:3]])
-                    simple_answer = f"Based on the search for '{sanitized_query}', I found {len(documents)} relevant documents using simple search. Here's a summary of the key information:\n\n{context_text[:500]}..."
+                    # Extract relevant content and provide a meaningful answer
+                    if "rent" in sanitized_query.lower() and any("rent" in chunk.get('text', '').lower() for chunk in simple_chunks):
+                        # Extract rent-related information
+                        rent_info = []
+                        for chunk in simple_chunks[:5]:
+                            text = chunk.get('text', '')
+                            if 'rent' in text.lower() or 'amount' in text.lower() or 'rs.' in text.lower():
+                                rent_info.append(text)
+                        
+                        if rent_info:
+                            simple_answer = f"Based on the documents, I found information about rent:\n\n"
+                            for i, info in enumerate(rent_info[:3], 1):
+                                simple_answer += f"{i}. {info.strip()}\n\n"
+                            simple_answer += f"\nTotal documents found: {len(documents)}"
+                        else:
+                            simple_answer = f"I found {len(documents)} documents but couldn't extract specific rent information. Please check the document details below."
+                    else:
+                        # General answer for other queries
+                        key_content = []
+                        for chunk in simple_chunks[:3]:
+                            text = chunk.get('text', '').strip()
+                            if text and len(text) > 50:
+                                key_content.append(text[:300])
+                        
+                        simple_answer = f"I found {len(documents)} relevant documents for your query '{sanitized_query}'.\n\n"
+                        if key_content:
+                            simple_answer += "Key findings:\n\n"
+                            for i, content in enumerate(key_content, 1):
+                                simple_answer += f"{i}. {content}...\n\n"
+                        simple_answer += "Please see the document details below for complete information."
                 else:
                     simple_answer = f"I searched for '{sanitized_query}' but couldn't find relevant documents. This might be because the content isn't indexed or the search terms don't match the available content."
                 
@@ -636,17 +781,30 @@ def search_stream():
             try:
                 logger.info("[STREAM] Getting chunks first...")
                 
-                # We need to modify rag_query_enhanced to return chunks immediately
-                # For now, let's call the existing function and extract chunks
-                result = rag_query_enhanced(
-                    question=sanitized_query,
-                    embeddings=embeddings,
-                    topn=10,
-                    filters=None,
-                    enable_reranking=True,
-                    session_id=None,
-                    enable_optimization=True
-                )
+                # Use a thread pool executor to run the async function
+                import concurrent.futures
+                
+                def run_async_rag():
+                    # Create a new event loop for this thread
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        return loop.run_until_complete(rag_query_enhanced(
+                            question=sanitized_query,
+                            embeddings=embeddings,
+                            topn=10,
+                            filters=None,
+                            enable_reranking=True,
+                            session_id=None,
+                            enable_optimization=True
+                        ))
+                    finally:
+                        loop.close()
+                
+                # Run in a separate thread to avoid event loop conflicts
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_async_rag)
+                    result = future.result(timeout=30)  # 30 second timeout
                 
                 # Extract chunks from result
                 if isinstance(result, dict):

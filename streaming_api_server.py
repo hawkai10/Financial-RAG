@@ -9,6 +9,7 @@ import json
 import time
 import logging
 import traceback
+import asyncio
 
 # Import your existing modules
 from api_server import (
@@ -51,7 +52,7 @@ def search_stream():
                 
                 # We need to modify rag_query_enhanced to return chunks immediately
                 # For now, let's call the existing function and extract chunks
-                result = rag_query_enhanced(
+                result = asyncio.run(rag_query_enhanced(
                     question=sanitized_query,
                     embeddings=embeddings,
                     topn=10,
@@ -59,7 +60,7 @@ def search_stream():
                     enable_reranking=True,
                     session_id=None,
                     enable_optimization=True
-                )
+                ))
                 
                 # Extract chunks from result
                 if isinstance(result, dict):

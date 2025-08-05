@@ -4,6 +4,8 @@ import sys
 import traceback
 from pathlib import Path
 from typing import Dict, List, Any
+from init_chunks_db import create_chunks_database
+from utils import logger
 
 def load_and_prepare_chunks_txtai_format(file_path: str) -> List[Dict[str, Any]]:
     """
@@ -128,8 +130,19 @@ def main():
         # Create embeddings index
         create_embeddings_index_txtai(chunks, model_name, index_name)
         
-        pass
-        pass
+        logger.info("Embeddings index created successfully")
+        
+        # Automatically update chunks.db after successful embedding
+        try:
+            logger.info("Updating chunks.db with latest chunk data...")
+            create_chunks_database("chunks.db", input_file)
+            logger.info("chunks.db updated successfully")
+        except Exception as db_error:
+            logger.error(f"Failed to update chunks.db: {db_error}")
+            # Don't fail the entire process if DB update fails
+            print(f"[WARNING] chunks.db update failed: {db_error}")
+        
+        logger.info("Embedding pipeline completed successfully")
         
         # Usage example
         print(f"\n[INFO] Usage example:")

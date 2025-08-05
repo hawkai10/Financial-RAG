@@ -30,6 +30,7 @@ class Config:
     INDEX_PATH: str = "business-docs-index"
     CHUNKS_FILE: str = "contextualized_chunks.json"
     CONTEXTUALIZED_CHUNKS_JSON: str = "contextualized_chunks.json"
+    CONTEXTUALIZED_CHUNKS_JSON_PATH: str = "contextualized_chunks.json"
     
     # Processing Limits
     MAX_CONTEXT_LENGTH: int = 4000

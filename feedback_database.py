@@ -1,4 +1,5 @@
-import sqlite3
+import aiosqlite
+import asyncio
 import json
 import pandas as pd
 import numpy as np
@@ -27,20 +28,22 @@ class AdvancedAnalytics:
     def __init__(self, feedback_db):
         self.feedback_db = feedback_db
 
-    def analyze_query_patterns(self, days: int = 30) -> Dict[str, Any]:
+    async def analyze_query_patterns(self, days: int = 30) -> Dict[str, Any]:
         """Deep query pattern analysis."""
-        conn = self.feedback_db.get_connection()
-        
-        # Get query data
-        query = '''
-        SELECT query_text, user_rating, processing_time, chunks_used,
-               query_strategy, timestamp, feedback_text
-        FROM query_feedback
-        WHERE timestamp >= datetime('now', '-{} days')
-        '''.format(days)
-        
-        df = pd.read_sql_query(query, conn)
-        conn.close()
+        async with await self.feedback_db.get_connection() as conn:
+            # Get query data
+            query = '''
+            SELECT query_text, user_rating, processing_time, chunks_used,
+                   query_strategy, timestamp, feedback_text
+            FROM query_feedback
+            WHERE timestamp >= datetime('now', '-{} days')
+            '''.format(days)
+            
+            cursor = await conn.cursor()
+            await cursor.execute(query)
+            rows = await cursor.fetchall()
+            cols = [desc[0] for desc in cursor.description]
+            df = pd.DataFrame(rows, columns=cols)
 
         if df.empty:
             return self._empty_analytics()
@@ -60,17 +63,20 @@ class AdvancedAnalytics:
 
         return sanitize_for_json(patterns)
 
-    def analyze_user_journey(self, session_data: Optional[List[Dict]] = None) -> Dict[str, Any]:
+    async def analyze_user_journey(self, session_data: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """Analyze user journey patterns."""
-        conn = self.feedback_db.get_connection()
-        query = '''
-        SELECT session_id, query_text, user_rating, timestamp, query_strategy
-        FROM query_feedback
-        WHERE session_id IS NOT NULL AND session_id != 'anonymous'
-        ORDER BY session_id, timestamp
-        '''
-        df = pd.read_sql_query(query, conn)
-        conn.close()
+        async with await self.feedback_db.get_connection() as conn:
+            query = '''
+            SELECT session_id, query_text, user_rating, timestamp, query_strategy
+            FROM query_feedback
+            WHERE session_id IS NOT NULL AND session_id != 'anonymous'
+            ORDER BY session_id, timestamp
+            '''
+            cursor = await conn.cursor()
+            await cursor.execute(query)
+            rows = await cursor.fetchall()
+            cols = [desc[0] for desc in cursor.description]
+            df = pd.DataFrame(rows, columns=cols)
 
         if df.empty:
             return {'session_analysis': {}, 'journey_patterns': {}}
@@ -92,10 +98,10 @@ class AdvancedAnalytics:
             'active_sessions_today': self._count_active_sessions_today(df)
         })
 
-    def generate_performance_insights(self) -> Dict[str, Any]:
+    async def generate_performance_insights(self) -> Dict[str, Any]:
         """Generate AI-powered insights about system performance."""
-        patterns = self.analyze_query_patterns()
-        journey = self.analyze_user_journey()
+        patterns = await self.analyze_query_patterns()
+        journey = await self.analyze_user_journey()
         
         insights = {
             'performance_summary': self._generate_performance_summary(patterns),
@@ -328,155 +334,161 @@ class EnhancedFeedbackDatabase:
     def __init__(self, db_path: str = "feedback.db"):
         self.db_path = db_path
         self.analytics = AdvancedAnalytics(self)
-        self.init_database()
+        # self.init_database() # Defer initialization to an async method
 
-    def get_connection(self):
-        """Get database connection."""
-        return sqlite3.connect(self.db_path)
+    async def get_connection(self):
+        """Get an async database connection."""
+        return await aiosqlite.connect(self.db_path)
 
-    def init_database(self):
-        """Initialize enhanced database schema."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    async def init_database(self):
+        """Initialize enhanced database schema asynchronously."""
+        async with await self.get_connection() as conn:
+            cursor = await conn.cursor()
 
-        # Enhanced query feedback table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS query_feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            query_text TEXT NOT NULL,
-            answer_text TEXT,
-            user_rating INTEGER,
-            retrieval_score REAL,
-            processing_time REAL,
-            chunks_used INTEGER,
-            chunks_data TEXT,
-            feedback_text TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            session_id TEXT,
-            query_strategy TEXT,
-            query_complexity_score REAL,
-            user_agent TEXT,
-            ip_address TEXT
-        )
-        ''')
+            # Enhanced query feedback table
+            await cursor.execute('''
+            CREATE TABLE IF NOT EXISTS query_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query_text TEXT NOT NULL,
+                answer_text TEXT,
+                user_rating INTEGER,
+                retrieval_score REAL,
+                processing_time REAL,
+                chunks_used INTEGER,
+                chunks_data TEXT,
+                feedback_text TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                session_id TEXT,
+                query_strategy TEXT,
+                query_complexity_score REAL,
+                user_agent TEXT,
+                ip_address TEXT
+            )
+            ''')
 
-        # Enhanced query cache table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS query_cache (
-            query_hash TEXT PRIMARY KEY,
-            query_text TEXT,
-            result_data TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            access_count INTEGER DEFAULT 1,
-            last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
-            cache_hit_count INTEGER DEFAULT 0,
-            strategy_used TEXT
-        )
-        ''')
+            # Enhanced query cache table
+            await cursor.execute('''
+            CREATE TABLE IF NOT EXISTS query_cache (
+                query_hash TEXT PRIMARY KEY,
+                query_text TEXT,
+                result_data TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                access_count INTEGER DEFAULT 1,
+                last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
+                cache_hit_count INTEGER DEFAULT 0,
+                strategy_used TEXT
+            )
+            ''')
 
-        # New analytics table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS analytics_summary (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date DATE DEFAULT (date('now')),
-            total_queries INTEGER DEFAULT 0,
-            avg_rating REAL DEFAULT 0.0,
-            avg_processing_time REAL DEFAULT 0.0,
-            strategy_distribution TEXT,
-            top_keywords TEXT,
-            unique_users INTEGER DEFAULT 0,
-            cache_hit_rate REAL DEFAULT 0.0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-        ''')
+            # New analytics table
+            await cursor.execute('''
+            CREATE TABLE IF NOT EXISTS analytics_summary (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE DEFAULT (date('now')),
+                total_queries INTEGER DEFAULT 0,
+                avg_rating REAL DEFAULT 0.0,
+                avg_processing_time REAL DEFAULT 0.0,
+                strategy_distribution TEXT,
+                top_keywords TEXT,
+                unique_users INTEGER DEFAULT 0,
+                cache_hit_rate REAL DEFAULT 0.0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
 
-        # System performance table
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS system_performance (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            cpu_usage REAL,
-            memory_usage REAL,
-            active_sessions INTEGER,
-            queries_per_minute REAL,
-            error_rate REAL,
-            avg_response_time REAL
-        )
-        ''')
+            # System performance table
+            await cursor.execute('''
+            CREATE TABLE IF NOT EXISTS system_performance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                cpu_usage REAL,
+                memory_usage REAL,
+                active_sessions INTEGER,
+                queries_per_minute REAL,
+                error_rate REAL,
+                avg_response_time REAL
+            )
+            ''')
 
-        conn.commit()
-        conn.close()
+            await conn.commit()
 
-    def store_feedback(self, feedback_data: Dict[str, Any]):
-        """Store enhanced feedback with analytics data."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    async def store_feedback(self, feedback_data: Dict[str, Any]):
+        """Store enhanced feedback with analytics data asynchronously."""
+        async with await self.get_connection() as conn:
+            cursor = await conn.cursor()
 
-        def sanitize_value(value):
-            if value is None:
-                return None
-            if isinstance(value, (int, float)) and (value != value or value == float('inf') or value == float('-inf')):
-                return None
-            return value
+            def sanitize_value(value):
+                if value is None:
+                    return None
+                if isinstance(value, (int, float)) and (value != value or value == float('inf') or value == float('-inf')):
+                    return None
+                return value
 
-        # Sanitize chunks_data before JSON serialization
-        chunks_data = sanitize_for_json(feedback_data.get('chunks_data', []))
+            # Sanitize chunks_data before JSON serialization
+            chunks_data = sanitize_for_json(feedback_data.get('chunks_data', []))
 
-        cursor.execute('''
-        INSERT INTO query_feedback
-        (query_text, answer_text, user_rating, retrieval_score,
-         processing_time, chunks_used, chunks_data, feedback_text,
-         session_id, query_strategy, query_complexity_score, user_agent, ip_address)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            feedback_data.get('query'),
-            feedback_data.get('answer'),
-            sanitize_value(feedback_data.get('rating')),
-            sanitize_value(feedback_data.get('retrieval_score')),
-            sanitize_value(feedback_data.get('processing_time')),
-            sanitize_value(feedback_data.get('chunks_used')),
-            json.dumps(chunks_data),
-            feedback_data.get('feedback_text'),
-            feedback_data.get('session_id'),
-            feedback_data.get('query_strategy'),
-            sanitize_value(feedback_data.get('query_complexity_score')),
-            feedback_data.get('user_agent'),
-            feedback_data.get('ip_address')
-        ))
+            await cursor.execute('''
+            INSERT INTO query_feedback
+            (query_text, answer_text, user_rating, retrieval_score,
+             processing_time, chunks_used, chunks_data, feedback_text,
+             session_id, query_strategy, query_complexity_score, user_agent, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                feedback_data.get('query'),
+                feedback_data.get('answer'),
+                sanitize_value(feedback_data.get('rating')),
+                sanitize_value(feedback_data.get('retrieval_score')),
+                sanitize_value(feedback_data.get('processing_time')),
+                sanitize_value(feedback_data.get('chunks_used')),
+                json.dumps(chunks_data),
+                feedback_data.get('feedback_text'),
+                feedback_data.get('session_id'),
+                feedback_data.get('query_strategy'),
+                sanitize_value(feedback_data.get('query_complexity_score')),
+                feedback_data.get('user_agent'),
+                feedback_data.get('ip_address')
+            ))
 
-        conn.commit()
-        conn.close()
+            await conn.commit()
 
-    def get_performance_metrics(self, days: int = 30) -> Dict[str, Any]:
-        """Get enhanced performance metrics."""
-        conn = sqlite3.connect(self.db_path)
-        query = '''
-        SELECT
-            AVG(CASE WHEN user_rating IS NOT NULL THEN user_rating END) as avg_rating,
-            COUNT(*) as total_queries,
-            AVG(CASE WHEN processing_time IS NOT NULL THEN processing_time END) as avg_response_time,
-            SUM(CASE WHEN user_rating >= 4 THEN 1 ELSE 0 END) as high_rated,
-            SUM(CASE WHEN user_rating <= 2 THEN 1 ELSE 0 END) as low_rated,
-            COUNT(DISTINCT session_id) as unique_sessions,
-            COUNT(DISTINCT query_strategy) as strategies_used
-        FROM query_feedback
-        WHERE timestamp >= datetime('now', '-{} days')
-        '''.format(days)
+    async def get_performance_metrics(self, days: int = 30) -> Dict[str, Any]:
+        """Get enhanced performance metrics asynchronously."""
+        async with await self.get_connection() as conn:
+            query = '''
+            SELECT
+                AVG(CASE WHEN user_rating IS NOT NULL THEN user_rating END) as avg_rating,
+                COUNT(*) as total_queries,
+                AVG(CASE WHEN processing_time IS NOT NULL THEN processing_time END) as avg_response_time,
+                SUM(CASE WHEN user_rating >= 4 THEN 1 ELSE 0 END) as high_rated,
+                SUM(CASE WHEN user_rating <= 2 THEN 1 ELSE 0 END) as low_rated,
+                COUNT(DISTINCT session_id) as unique_sessions,
+                COUNT(DISTINCT query_strategy) as strategies_used
+            FROM query_feedback
+            WHERE timestamp >= datetime('now', '-{} days')
+            '''.format(days)
 
-        df = pd.read_sql_query(query, conn)
+            # Pandas doesn't directly support async DB connections.
+            # We'll fetch data and then load it into a DataFrame.
+            cursor = await conn.cursor()
+            await cursor.execute(query)
+            rows = await cursor.fetchall()
+            cols = [desc[0] for desc in cursor.description]
+            df = pd.DataFrame(rows, columns=cols)
 
-        # Get cache statistics
-        cache_query = '''
-        SELECT
-            COUNT(*) as total_cached_queries,
-            AVG(access_count) as avg_access_count,
-            SUM(cache_hit_count) as total_cache_hits
-        FROM query_cache
-        WHERE timestamp >= datetime('now', '-{} days')
-        '''.format(days)
-
-        cache_df = pd.read_sql_query(cache_query, conn)
-        conn.close()
+            # Get cache statistics
+            cache_query = '''
+            SELECT
+                COUNT(*) as total_cached_queries,
+                AVG(access_count) as avg_access_count,
+                SUM(cache_hit_count) as total_cache_hits
+            FROM query_cache
+            WHERE timestamp >= datetime('now', '-{} days')
+            '''.format(days)
+            
+            await cursor.execute(cache_query)
+            cache_rows = await cursor.fetchall()
+            cache_cols = [desc[0] for desc in cursor.description]
+            cache_df = pd.DataFrame(cache_rows, columns=cache_cols)
 
         if df.empty or df.iloc[0]['total_queries'] == 0:
             return self._empty_metrics()
@@ -541,74 +553,73 @@ class EnhancedFeedbackDatabase:
             'avg_cache_access': 0.0
         }
 
-    def cache_query_result(self, query_hash: str, query_text: str, result: Dict[str, Any]):
-        """Enhanced query result caching."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    async def cache_query_result(self, query_hash: str, query_text: str, result: Dict[str, Any]):
+        """Enhanced query result caching asynchronously."""
+        async with await self.get_connection() as conn:
+            cursor = await conn.cursor()
 
-        # Sanitize result before JSON serialization
-        sanitized_result = sanitize_for_json(result)
-        strategy_used = result.get('query_strategy', 'unknown')
+            # Sanitize result before JSON serialization
+            sanitized_result = sanitize_for_json(result)
+            strategy_used = result.get('query_strategy', 'unknown')
 
-        cursor.execute('''
-        INSERT OR REPLACE INTO query_cache
-        (query_hash, query_text, result_data, access_count, last_accessed, strategy_used)
-        VALUES (?, ?, ?,
-                COALESCE((SELECT access_count + 1 FROM query_cache WHERE query_hash = ?), 1),
-                CURRENT_TIMESTAMP, ?)
-        ''', (query_hash, query_text, json.dumps(sanitized_result), query_hash, strategy_used))
+            await cursor.execute('''
+            INSERT OR REPLACE INTO query_cache
+            (query_hash, query_text, result_data, access_count, last_accessed, strategy_used)
+            VALUES (?, ?, ?,
+                    COALESCE((SELECT access_count + 1 FROM query_cache WHERE query_hash = ?), 1),
+                    CURRENT_TIMESTAMP, ?)
+            ''', (query_hash, query_text, json.dumps(sanitized_result), query_hash, strategy_used))
 
-        conn.commit()
-        conn.close()
+            await conn.commit()
 
-    def get_cached_result(self, query_hash: str) -> Optional[Dict[str, Any]]:
-        """Enhanced cached result retrieval."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    async def get_cached_result(self, query_hash: str) -> Optional[Dict[str, Any]]:
+        """Enhanced cached result retrieval asynchronously."""
+        async with await self.get_connection() as conn:
+            cursor = await conn.cursor()
 
-        cursor.execute('''
-        SELECT result_data FROM query_cache
-        WHERE query_hash = ? AND
-              timestamp >= datetime('now', '-1 hour')
-        ''', (query_hash,))
-
-        result = cursor.fetchone()
-
-        if result:
-            # Update cache hit count
-            cursor.execute('''
-            UPDATE query_cache
-            SET cache_hit_count = cache_hit_count + 1,
-                last_accessed = CURRENT_TIMESTAMP
-            WHERE query_hash = ?
+            await cursor.execute('''
+            SELECT result_data FROM query_cache
+            WHERE query_hash = ? AND
+                  timestamp >= datetime('now', '-1 hour')
             ''', (query_hash,))
 
-            conn.commit()
+            result = await cursor.fetchone()
 
-        conn.close()
+            if result:
+                # Update cache hit count
+                await cursor.execute('''
+                UPDATE query_cache
+                SET cache_hit_count = cache_hit_count + 1,
+                    last_accessed = CURRENT_TIMESTAMP
+                WHERE query_hash = ?
+                ''', (query_hash,))
 
-        if result:
-            try:
-                return json.loads(result[0])
-            except json.JSONDecodeError:
-                return None
+                await conn.commit()
+
+            if result:
+                try:
+                    return json.loads(result[0])
+                except json.JSONDecodeError:
+                    return None
 
         return None
 
-    def get_optimization_analytics(self, days: int = 30) -> Dict[str, Any]:
-        """Get optimization-specific analytics."""
-        conn = sqlite3.connect(self.db_path)
-        
-        # Query for optimization data from chunks_data
-        query = '''
-        SELECT chunks_data, query_strategy, processing_time, user_rating
-        FROM query_feedback
-        WHERE timestamp >= datetime('now', '-{} days')
-        AND chunks_data IS NOT NULL
-        '''.format(days)
-        
-        df = pd.read_sql_query(query, conn)
-        conn.close()
+    async def get_optimization_analytics(self, days: int = 30) -> Dict[str, Any]:
+        """Get optimization-specific analytics asynchronously."""
+        async with await self.get_connection() as conn:
+            # Query for optimization data from chunks_data
+            query = '''
+            SELECT chunks_data, query_strategy, processing_time, user_rating
+            FROM query_feedback
+            WHERE timestamp >= datetime('now', '-{} days')
+            AND chunks_data IS NOT NULL
+            '''.format(days)
+            
+            cursor = await conn.cursor()
+            await cursor.execute(query)
+            rows = await cursor.fetchall()
+            cols = [desc[0] for desc in cursor.description]
+            df = pd.DataFrame(rows, columns=cols)
 
         if df.empty:
             return {
@@ -647,38 +658,37 @@ class EnhancedFeedbackDatabase:
 
         return sanitize_for_json(analytics_result)
 
-    def get_analytics_insights(self, days: int = 30) -> Dict[str, Any]:
-        """Get comprehensive analytics insights."""
-        return self.analytics.generate_performance_insights()
+    async def get_analytics_insights(self, days: int = 30) -> Dict[str, Any]:
+        """Get comprehensive analytics insights asynchronously."""
+        return await self.analytics.generate_performance_insights()
 
-    def get_query_patterns(self, days: int = 30) -> Dict[str, Any]:
-        """Get detailed query pattern analysis."""
-        return self.analytics.analyze_query_patterns(days)
+    async def get_query_patterns(self, days: int = 30) -> Dict[str, Any]:
+        """Get detailed query pattern analysis asynchronously."""
+        return await self.analytics.analyze_query_patterns(days)
 
-    def get_user_journey_analysis(self) -> Dict[str, Any]:
-        """Get user journey analysis."""
-        return self.analytics.analyze_user_journey()
+    async def get_user_journey_analysis(self) -> Dict[str, Any]:
+        """Get user journey analysis asynchronously."""
+        return await self.analytics.analyze_user_journey()
 
-    def record_system_performance(self, performance_data: Dict[str, Any]):
-        """Record system performance metrics."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    async def record_system_performance(self, performance_data: Dict[str, Any]):
+        """Record system performance metrics asynchronously."""
+        async with await self.get_connection() as conn:
+            cursor = await conn.cursor()
 
-        # Sanitize performance data before insertion
-        sanitized_data = sanitize_for_json(performance_data)
+            # Sanitize performance data before insertion
+            sanitized_data = sanitize_for_json(performance_data)
 
-        cursor.execute('''
-        INSERT INTO system_performance
-        (cpu_usage, memory_usage, active_sessions, queries_per_minute, error_rate, avg_response_time)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            sanitized_data.get('cpu_usage'),
-            sanitized_data.get('memory_usage'),
-            sanitized_data.get('active_sessions'),
-            sanitized_data.get('queries_per_minute'),
-            sanitized_data.get('error_rate'),
-            sanitized_data.get('avg_response_time')
-        ))
+            await cursor.execute('''
+            INSERT INTO system_performance
+            (cpu_usage, memory_usage, active_sessions, queries_per_minute, error_rate, avg_response_time)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                sanitized_data.get('cpu_usage'),
+                sanitized_data.get('memory_usage'),
+                sanitized_data.get('active_sessions'),
+                sanitized_data.get('queries_per_minute'),
+                sanitized_data.get('error_rate'),
+                sanitized_data.get('avg_response_time')
+            ))
 
-        conn.commit()
-        conn.close()
+            await conn.commit()

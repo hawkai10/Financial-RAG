@@ -3,20 +3,19 @@ import time
 import json
 import hashlib
 import numpy as np
-import sqlite3
-import threading
 from typing import List, Dict, Tuple, Any, Optional
 from functools import lru_cache, wraps
-from queue import Queue, Empty
 from contextlib import contextmanager
 import pickle
 import types
 import traceback
 import sys
+import asyncio
+import aiohttp
+import aiosqlite
 
 from txtai import Embeddings
 from rank_bm25 import BM25Okapi
-import requests as http_requests  # Use alias to avoid conflicts
 
 # Import configurations and utilities
 from config import config
@@ -32,6 +31,7 @@ from progressive_retrieval import ProgressiveRetriever
 from aggregation_optimizer import AggregationOptimizer
 from prompt_templates import PromptBuilder
 from unified_query_processor import unified_processor
+from chunk_manager import ChunkManager
 
 # ============================================================
 # OPTIMIZATION CLASSES
@@ -204,80 +204,85 @@ class SmartEmbeddingCache:
             'disk_cache_files': disk_files
         }
 
-class ConnectionPool:
-    """Simple database connection pool."""
+class AsyncConnectionPool:
+    """Asynchronous database connection pool."""
     
     def __init__(self, database_path: str, pool_size: int = 10):
         self.database_path = database_path
         self.pool_size = pool_size
-        self.pool = Queue(maxsize=pool_size)
-        self.lock = threading.Lock()
+        self._pool = asyncio.Queue(maxsize=pool_size)
+        self._lock = asyncio.Lock()
         self.created_connections = 0
-        
-        # Pre-create connections
-        self._fill_pool()
-    
-    def _create_connection(self):
-        """Create a new database connection."""
-        conn = sqlite3.connect(self.database_path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row  # Enable column access by name
+
+    async def _create_connection(self):
+        """Create a new aiosqlite database connection."""
+        conn = await aiosqlite.connect(self.database_path)
+        conn.row_factory = aiosqlite.Row
         return conn
-    
-    def _fill_pool(self):
+
+    async def _fill_pool(self):
         """Fill the pool with connections."""
-        for _ in range(self.pool_size):
-            if self.created_connections < self.pool_size:
+        async with self._lock:
+            while self.created_connections < self.pool_size and not self._pool.full():
                 try:
-                    conn = self._create_connection()
-                    self.pool.put(conn)
+                    conn = await self._create_connection()
+                    await self._pool.put(conn)
                     self.created_connections += 1
                 except Exception as e:
-                    logger.error(f"Failed to create database connection: {e}")
+                    logger.error(f"Failed to create async database connection: {e}")
                     break
-    
-    def get_connection(self, timeout: float = 5.0):
+
+    async def get_connection(self, timeout: float = 5.0):
         """Get a connection from the pool."""
+        if self._pool.empty() and self.created_connections < self.pool_size:
+            await self._fill_pool()
+            
         try:
-            return self.pool.get(timeout=timeout)
-        except Empty:
-            logger.warning("Connection pool exhausted, creating temporary connection")
-            return self._create_connection()
-    
-    def return_connection(self, conn):
+            return await asyncio.wait_for(self._pool.get(), timeout=timeout)
+        except asyncio.TimeoutError:
+            logger.warning("Async connection pool exhausted, creating temporary connection")
+            return await self._create_connection()
+
+    async def return_connection(self, conn):
         """Return a connection to the pool."""
-        try:
-            self.pool.put_nowait(conn)
-        except:
-            # Pool is full, close the connection
-            conn.close()
-    
-    @contextmanager
+        if self._pool.full():
+            await conn.close()
+        else:
+            await self._pool.put(conn)
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        self._current_conn = await self.get_connection()
+        return self._current_conn
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        if hasattr(self, '_current_conn'):
+            await self.return_connection(self._current_conn)
+            delattr(self, '_current_conn')
+
     def get_connection_context(self):
-        """Context manager for automatic connection management."""
-        conn = self.get_connection()
-        try:
-            yield conn
-        finally:
-            self.return_connection(conn)
-    
+        """Get async context manager for connection management."""
+        return self
+
     def get_stats(self):
         """Get connection pool statistics."""
         return {
             'pool_size': self.pool_size,
-            'available_connections': self.pool.qsize(),
+            'available_connections': self._pool.qsize(),
             'created_connections': self.created_connections,
-            'utilization': f"{((self.pool_size - self.pool.qsize()) / self.pool_size * 100):.1f}%"
+            'utilization': f"{((self.pool_size - self._pool.qsize()) / self.pool_size * 100) if self.pool_size > 0 else 0:.1f}%"
         }
-    
-    def close_all(self):
+
+    async def close_all(self):
         """Close all connections in the pool."""
-        while not self.pool.empty():
+        while not self._pool.empty():
             try:
-                conn = self.pool.get_nowait()
-                conn.close()
-            except Empty:
+                conn = self._pool.get_nowait()
+                await conn.close()
+            except asyncio.QueueEmpty:
                 break
-        logger.info("[DB] All database connections closed")
+        logger.info("[DB] All async database connections closed")
 
 # ============================================================
 # GLOBAL INSTANCES WITH OPTIMIZATIONS
@@ -292,7 +297,15 @@ query_analyzer = QueryAnalyzer()
 # Initialize optimization instances
 chunk_cache = SmartChunkCache(max_size=500)
 embedding_cache = SmartEmbeddingCache()
-db_pool = ConnectionPool(config.CHUNKS_FILE, pool_size=10)
+db_pool = AsyncConnectionPool(config.CHUNKS_FILE, pool_size=20) # Increased pool size
+
+# Initialize ChunkManager
+try:
+    chunk_manager = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
+    logger.info("ChunkManager initialized successfully.")
+except Exception as e:
+    logger.error(f"Failed to initialize ChunkManager: {e}", exc_info=True)
+    chunk_manager = None
 
 # Custom exceptions
 class GeminiAPIError(Exception):
@@ -320,23 +333,44 @@ class EnhancedSmartCache:
         """Enhanced decorator for caching with optimization metadata."""
         def decorator(func):
             @wraps(func)
-            def wrapper(question, *args, **kwargs):
+            async def wrapper(question, *args, **kwargs):
+                # Check if we're in a Flask/threading context to avoid database threading issues
+                import threading
+                current_thread = threading.current_thread()
+                is_main_thread = current_thread is threading.main_thread()
+                
+                # Skip caching if we're in a Flask worker thread to avoid threading issues
+                if not is_main_thread or 'werkzeug' in current_thread.name.lower():
+                    logger.info(f"Skipping cache in thread context for: {question[:50]}...")
+                    result = await func(question, *args, **kwargs)
+                    return result
+                
                 cache_key = hashlib.md5(
                     f"{question}:{str(args)}:{str(kwargs)}".encode()
                 ).hexdigest()
                 
-                cached_result = self.feedback_db.get_cached_result(cache_key)
-                if cached_result:
-                    logger.info(f"Cache hit for query: {question[:50]}...")
-                    self.hit_count += 1
-                    cached_result['from_cache'] = True
-                    cached_result['cache_stats'] = self.get_cache_stats()
-                    return cached_result
+                try:
+                    cached_result = await self.feedback_db.get_cached_result(cache_key)
+                    if cached_result:
+                        logger.info(f"Cache hit for query: {question[:50]}...")
+                        self.hit_count += 1
+                        cached_result['from_cache'] = True
+                        cached_result['cache_stats'] = self.get_cache_stats()
+                        return cached_result
+                except Exception as cache_error:
+                    logger.warning(f"Cache access failed: {cache_error}, proceeding without cache")
                 
                 logger.info(f"Cache miss, computing result for: {question[:50]}...")
                 self.miss_count += 1
-                result = func(question, *args, **kwargs)
-                self.feedback_db.cache_query_result(cache_key, question, result)
+                result = await func(question, *args, **kwargs)
+                
+                # Only try to cache if we're in main thread context
+                if is_main_thread and 'werkzeug' not in current_thread.name.lower():
+                    try:
+                        await self.feedback_db.cache_query_result(cache_key, question, result)
+                    except Exception as cache_error:
+                        logger.warning(f"Cache storage failed: {cache_error}")
+                
                 result['from_cache'] = False
                 result['cache_stats'] = self.get_cache_stats()
                 return result
@@ -358,11 +392,9 @@ class EnhancedSmartCache:
 smart_cache = EnhancedSmartCache()
 
 # Simple fallback functions for core operations
-def call_gemini_enhanced(prompt: str, **kwargs) -> str:
+async def call_gemini_enhanced(prompt: str, **kwargs) -> str:
     """Enhanced Gemini API call with optimization."""
     try:
-        import requests
-        import json
         from config import config
         
         # Direct API call
@@ -377,16 +409,16 @@ def call_gemini_enhanced(prompt: str, **kwargs) -> str:
                     ]
                 }
                 
-                response = requests.post(
-                    config.GEMINI_API_URL,
-                    headers=headers,
-                    params=params,
-                    json=data,
-                    timeout=30
-                )
-                
-                response.raise_for_status()
-                result = response.json()
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        config.GEMINI_API_URL,
+                        headers=headers,
+                        params=params,
+                        json=data,
+                        timeout=30
+                    ) as response:
+                        response.raise_for_status()
+                        result = await response.json()
                 
                 if ("candidates" in result and 
                     result["candidates"] and
@@ -401,26 +433,37 @@ def call_gemini_enhanced(prompt: str, **kwargs) -> str:
                 if attempt == max_retries - 1:
                     raise e
                 logger.warning(f"Gemini API attempt {attempt + 1} failed: {e}")
-                time.sleep(1)
+                await asyncio.sleep(1)
         
     except Exception as e:
         logger.error(f"Enhanced Gemini call failed: {e}")
         raise GeminiAPIError(f"API call failed: {e}")
 
-def get_chunk_by_id_enhanced(embeddings: Embeddings, uid: str) -> Dict[str, Any]:
+async def get_chunk_by_id_enhanced(embeddings: Embeddings, uid: str) -> Dict[str, Any]:
     """Enhanced chunk retrieval with connection pooling and caching."""
     
     # Try smart cache first (fastest)
-    cached_chunk = chunk_cache.get(uid, config.CHUNKS_FILE)
+    cached_chunk = chunk_cache.get(uid, config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
     if cached_chunk:
         return cached_chunk
-    
-    # Try database with connection pooling (medium speed)
+
+    # Use ChunkManager as the primary source
+    if chunk_manager:
+        try:
+            chunk_data = chunk_manager.get_chunk(uid)
+            if chunk_data:
+                chunk_data["retrieval_method"] = "chunk_manager"
+                chunk_cache.put(uid, chunk_data, config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
+                return chunk_data
+        except Exception as e:
+            logger.error(f"ChunkManager retrieval failed for {uid}: {e}")
+
+    # Fallback to database if ChunkManager fails or is not available
     try:
-        with db_pool.get_connection_context() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM chunks WHERE chunk_id = ?", (uid,))
-            result = cursor.fetchone()
+        async with db_pool.get_connection_context() as conn:
+            cursor = await conn.cursor()
+            await cursor.execute("SELECT * FROM chunks WHERE chunk_id = ?", (uid,))
+            result = await cursor.fetchone()
             
             if result:
                 chunk_data = dict(result)
@@ -433,42 +476,39 @@ def get_chunk_by_id_enhanced(embeddings: Embeddings, uid: str) -> Dict[str, Any]
     except Exception as e:
         logger.error(f"Database lookup with pooling failed: {e}")
     
-    # Fallback to file system (slowest)
-    chunk_data = get_chunk_from_file_enhanced(uid)
-    return chunk_data
+    logger.warning(f"Chunk {uid} not found in any source")
+    return {
+        "chunk_id": uid,
+        "text": "Content not available",
+        "error": "Chunk not found",
+        "retrieval_method": "error"
+    }
 
 def get_chunk_from_file_enhanced(uid: str) -> Dict[str, Any]:
-    """Enhanced file-based chunk retrieval."""
+    """
+    Retrieve a specific chunk by its UID using the ChunkManager.
+    This function is now primarily a fallback or for specific cases.
+    """
+    if not chunk_manager:
+        logger.error("ChunkManager is not available.")
+        return {"error": "ChunkManager not initialized."}
     try:
-        # Try to load from contextualized chunks JSON
-        if os.path.exists(config.CONTEXTUALIZED_CHUNKS_JSON):
-            with open(config.CONTEXTUALIZED_CHUNKS_JSON, 'r', encoding='utf-8') as f:
-                chunks = json.load(f)
-                
-                for chunk in chunks:
-                    if chunk.get('chunk_id') == uid:
-                        chunk['retrieval_method'] = 'file_json'
-                        # Store in cache for next time
-                        chunk_cache.put(uid, chunk, config.CONTEXTUALIZED_CHUNKS_JSON)
-                        return chunk
-        
-        logger.warning(f"Chunk {uid} not found in any source")
-        return {
-            "chunk_id": uid,
-            "text": "Content not available",
-            "error": "Chunk not found",
-            "retrieval_method": "error"
-        }
+        chunk = chunk_manager.get_chunk(uid)
+        if chunk:
+            return chunk
+        else:
+            logger.warning(f"Chunk with UID {uid} not found by ChunkManager.")
+            return {
+                "chunk_id": uid,
+                "text": "Content not available",
+                "error": "Chunk not found",
+                "retrieval_method": "error"
+            }
     except Exception as e:
-        logger.error(f"File-based chunk retrieval failed: {e}")
-        return {
-            "chunk_id": uid,
-            "text": "Error retrieving content",
-            "error": str(e),
-            "retrieval_method": "error"
-        }
+        logger.error(f"Failed to retrieve chunk {uid} via ChunkManager: {e}", exc_info=True)
+        return {"error": f"Failed to retrieve chunk {uid}", "details": str(e)}
 
-def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], topn: int = 5,
+async def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], topn: int = 5,
                            filters: Optional[Dict] = None,
                            strategy: str = "Standard") -> Tuple[List[Tuple[str, Dict[str, Any]]], Dict[str, Any]]:
     """Enhanced traditional retrieval function with better error handling."""
@@ -477,6 +517,7 @@ def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], topn: i
         
         for query_idx, query in enumerate(queries):
             try:
+                # This part remains synchronous as txtai search is not async
                 results = embeddings.search(query, limit=topn)
                 
                 for rank, result in enumerate(results):
@@ -489,33 +530,26 @@ def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], topn: i
                     
                     if uid:
                         all_uids.add(uid)
-                        base_score = 1.0 - (rank * 0.1)
-                        query_weight = 1.0 - (query_idx * 0.1)
-                        
-                        if strategy == "Standard" and query_idx == 0:
-                            query_weight *= 1.2
-                        elif strategy == "Aggregation":
-                            query_weight = 1.0 - (query_idx * 0.05)
                         
             except Exception as e:
                 logger.warning(f"Search failed for query '{query}': {e}")
                 continue
         
+        # Concurrently retrieve all unique chunks
+        chunk_tasks = [get_chunk_by_id_enhanced(embeddings, uid) for uid in all_uids]
+        retrieved_chunks = await asyncio.gather(*chunk_tasks)
+
         # Convert UIDs to chunk data with scores
         chunk_results = []
-        for uid in all_uids:
-            try:
-                chunk = get_chunk_by_id_enhanced(embeddings, uid)
-                if chunk and not chunk.get("error"):
-                    score_info = {
-                        "retrieval_score": 0.8,  # Default score
-                        "strategy": strategy
-                    }
-                    chunk_results.append((uid, score_info))
-            except Exception as e:
-                logger.warning(f"Failed to retrieve chunk {uid}: {e}")
-                continue
-        
+        for chunk in retrieved_chunks:
+            if chunk and not chunk.get("error"):
+                uid = chunk.get("chunk_id")
+                score_info = {
+                    "retrieval_score": 0.8,  # Default score
+                    "strategy": strategy
+                }
+                chunk_results.append((uid, score_info))
+
         retrieval_info = {
             "method": "simple_enhanced",
             "total_queries": len(queries),
@@ -530,7 +564,7 @@ def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], topn: i
         logger.error(f"Enhanced retrieval failed: {e}")
         raise RetrievalError(f"Retrieval failed: {e}")
 
-def enhanced_retrieve(embeddings: Embeddings, queries: List[str], topn: int = 5, 
+async def enhanced_retrieve(embeddings: Embeddings, queries: List[str], topn: int = 5, 
                      strategy: str = "Standard") -> Tuple[List[Tuple[str, Dict[str, Any]]], Dict[str, Any]]:
     """Enhanced retrieval with progressive and hybrid options."""
     
@@ -538,14 +572,14 @@ def enhanced_retrieve(embeddings: Embeddings, queries: List[str], topn: int = 5,
     if config.PROGRESSIVE_RETRIEVAL_ENABLED:
         try:
             retriever = ProgressiveRetriever(embeddings)
-            return retriever.retrieve_progressively(queries, strategy, confidence=0.8)
+            return await retriever.retrieve_progressively(queries, strategy, confidence=0.8)
         except Exception as e:
             logger.warning(f"Progressive retrieval failed, falling back to simple: {e}")
     
     # Fall back to simple enhanced retrieval
-    return simple_retrieve_enhanced(embeddings, queries, topn, strategy=strategy)
+    return await simple_retrieve_enhanced(embeddings, queries, topn, strategy=strategy)
 
-def synthesize_answer_enhanced(question: str, chunks: List[Dict[str, Any]], 
+async def synthesize_answer_enhanced(question: str, chunks: List[Dict[str, Any]], 
                              strategy: str = "Standard", optimization_result: Dict = None,
                              use_hierarchical: bool = False) -> str:
     """Enhanced answer synthesis with strategy-aware optimization."""
@@ -632,7 +666,7 @@ FORMATTING GUIDELINES:
 Please provide a clear answer in natural language:"""
         
         # Call Gemini API
-        response = call_gemini_enhanced(prompt)
+        response = await call_gemini_enhanced(prompt)
         
         if not response or len(response.strip()) < 10:
             return "I was unable to generate a comprehensive answer based on the available information."
@@ -736,7 +770,7 @@ def _format_html_response(response: str, strategy: str) -> str:
     return result
 
 @smart_cache.cache_query_result(ttl_hours=1)
-def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
+async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
                       filters: Optional[Dict] = None, enable_reranking: bool = True,
                       session_id: str = None, enable_optimization: bool = True) -> Dict[str, Any]:
     """Enhanced RAG pipeline with unified preprocessing and optimizations."""
@@ -745,6 +779,7 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
     
     try:
         # STEP 1: Unified preprocessing (single LLM call)
+        # This can be run in an executor if it becomes a bottleneck
         processed = unified_processor.process_query_unified(question)
         corrected_query = processed['corrected_query']
         intent = processed['intent']
@@ -761,21 +796,28 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
         # STEP 3: Strategy-specific retrieval with optimizations
         if config.PROGRESSIVE_RETRIEVAL_ENABLED:
             retriever = ProgressiveRetriever(embeddings)
-            chunks, retrieval_info = retriever.retrieve_progressively(multiqueries, query_strategy, confidence)
+            # Assuming retrieve_progressively can be made async
+            chunks, retrieval_info = await retriever.retrieve_progressively(multiqueries, query_strategy, confidence)
         else:
-            chunk_results, retrieval_info = enhanced_retrieve(embeddings, multiqueries, topn=topn, strategy=query_strategy)
+            chunk_results, retrieval_info = await enhanced_retrieve(embeddings, multiqueries, topn=topn, strategy=query_strategy)
             chunks = []
-            for uid, score_info in chunk_results:
-                chunk = get_chunk_by_id_enhanced(embeddings, uid)
-                chunk.update(score_info)
-                if not chunk.get("error"):
-                    chunks.append(chunk)
-        
+            if chunk_results:
+                # Asynchronously get chunk details
+                chunk_tasks = [get_chunk_by_id_enhanced(embeddings, uid) for uid, score_info in chunk_results]
+                retrieved_chunks = await asyncio.gather(*chunk_tasks)
+                
+                # Combine chunks with their scores
+                for i, chunk in enumerate(retrieved_chunks):
+                    if chunk and not chunk.get("error"):
+                        chunk.update(chunk_results[i][1])
+                        chunks.append(chunk)
+
         # STEP 4: Apply reranking if enabled
         optimization_result = None
         if enable_reranking and chunks:
             from document_reranker import EnhancedDocumentReranker
             reranker = EnhancedDocumentReranker()
+            # Reranking is CPU-bound, can be run in an executor
             chunks, rerank_info = reranker.rerank_chunks(corrected_query, chunks, query_strategy)
             
             # Apply aggregation optimization if needed
@@ -786,9 +828,8 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
                     chunks = optimization_result["catalog"].get("sample_content", chunks)
         
         # STEP 5: Intelligent processing approach selection - Universal Hierarchical Processing
-        # Calculate if chunks will exceed token capacity for ANY query type
         estimated_total_tokens = _estimate_total_tokens(chunks, query_strategy)
-        token_capacity = config.MAX_CONTEXT_LENGTH - 500  # Reserve for prompt overhead
+        token_capacity = config.MAX_CONTEXT_LENGTH - 500
         
         should_use_hierarchical = (
             config.HIERARCHICAL_PROCESSING_ENABLED and 
@@ -796,14 +837,11 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
         )
         
         if should_use_hierarchical:
-            # Use enhanced strategy-aware hierarchical processing
             from hierarchical_processor import HierarchicalProcessor, ProcessingConfig
             
-            # Create LLM function wrapper for hierarchical processor
-            def llm_function(prompt: str, batch_chunks: List[Dict]) -> str:
-                return synthesize_answer_enhanced(prompt, batch_chunks, query_strategy, None, use_hierarchical=True)
-            
-            # Configure hierarchical processing based on config
+            async def llm_function_async(prompt: str, batch_chunks: List[Dict]) -> str:
+                return await synthesize_answer_enhanced(prompt, batch_chunks, query_strategy, None, use_hierarchical=True)
+
             hierarchical_config = ProcessingConfig(
                 max_tokens_per_batch=config.HIERARCHICAL_MAX_TOKENS_PER_BATCH,
                 min_chunks_per_batch=config.HIERARCHICAL_MIN_CHUNKS_PER_BATCH,
@@ -812,41 +850,27 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
                 enable_parallel=config.HIERARCHICAL_ENABLE_PARALLEL
             )
             
-            # Create processor with strategy-aware optimization
-            processor = HierarchicalProcessor(llm_function, hierarchical_config)
-            processor.set_query_strategy(query_strategy)  # Set strategy for optimization
+            processor = HierarchicalProcessor(llm_function_async, hierarchical_config)
+            processor.set_query_strategy(query_strategy)
             
-            # Process with strategy-specific optimizations
-            hierarchical_result = processor.process_large_query(corrected_query, chunks, query_strategy)
+            hierarchical_result = await processor.process_large_query_async(corrected_query, chunks, query_strategy)
             
             answer = hierarchical_result['final_answer']
             processing_method = f"hierarchical-{query_strategy.lower()}"
             hierarchical_stats = hierarchical_result['processing_stats']
-            
-            logger.info(f"🔄 Strategy-aware hierarchical processing ({query_strategy}): "
-                       f"{hierarchical_stats['total_batches']} batches, "
-                       f"{hierarchical_stats['processing_time']:.2f}s, "
-                       f"est. tokens: {estimated_total_tokens}, "
-                       f"completeness: {hierarchical_result['completeness']['success_rate']:.2f}, "
-                       f"conflicts: {'detected' if hierarchical_result.get('conflicts_detected') else 'none'}")
         else:
-            # Use standard processing for smaller chunk sets
-            answer = synthesize_answer_enhanced(corrected_query, chunks, query_strategy, optimization_result)
+            answer = await synthesize_answer_enhanced(corrected_query, chunks, query_strategy, optimization_result)
             processing_method = "standard"
             hierarchical_stats = None
             logger.info(f"📄 Standard processing ({query_strategy}): {len(chunks)} chunks, est. tokens: {estimated_total_tokens}")
         
-        # Calculate metrics
+        # ... (rest of the function remains largely the same)
         processing_time = time.time() - start_time
         avg_score = safe_mean([chunk.get('final_rerank_score', chunk.get('retrieval_score', 0)) for chunk in chunks])
         
-        # Calculate cost savings
         original_strategy_limits = {
-            "Standard": 5,
-            "Analyse": 8,
-            "Aggregation": 20
+            "Standard": 5, "Analyse": 8, "Aggregation": 20
         }
-        
         original_count = original_strategy_limits.get(query_strategy, 5)
         chunks_saved = max(0, original_count - len(chunks))
         cost_reduction = (chunks_saved / original_count * 100) if original_count > 0 else 0
@@ -858,7 +882,6 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
             'cost_reduction_percentage': round(cost_reduction, 2)
         }
         
-        # Prepare response with enhanced metadata including optimization stats
         display_chunks = chunks[:5]
         
         result = {
@@ -879,7 +902,7 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
             "savings_info": savings_info,
             "processing_method": processing_method,
             "hierarchical_stats": hierarchical_stats,
-            "optimization_stats": get_optimization_stats()  # Add optimization performance stats
+            "optimization_stats": get_optimization_stats()
         }
         
         sanitized_result = sanitize_for_json(result)
@@ -890,9 +913,17 @@ def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"Enhanced RAG query failed after {processing_time:.2f}s: {e}")
-        return _create_error_response(
+        # This needs to be async now
+        return await _create_error_response_async(
             str(e), question, [question], start_time, "error", {}, session_id
         )
+
+async def _create_error_response_async(error_msg: str, question: str, multiqueries: List[str], 
+                          start_time: float, status: str, retrieval_info: Dict, 
+                          session_id: str) -> Dict[str, Any]:
+    """Async version of create_error_response."""
+    return _create_error_response(error_msg, question, multiqueries, start_time, status, retrieval_info, session_id)
+
 
 def _estimate_total_tokens(chunks: List[Dict], strategy: str) -> int:
     """Estimate total tokens needed for all chunks."""
@@ -965,14 +996,15 @@ def get_cache_health():
 # FEEDBACK AND ANALYTICS WITH OPTIMIZATION DATA
 # ============================================================
 
-def collect_query_feedback_enhanced(query: str, result: Dict[str, Any], user_rating: int,
+async def collect_query_feedback_enhanced(query: str, result: Dict[str, Any], user_rating: int,
                                   feedback_text: str = "", session_id: str = None,
                                   user_agent: str = None, ip_address: str = None) -> bool:
     """Enhanced feedback collection with optimization metadata."""
     try:
         savings_info = result.get("savings_info", {})
         
-        return feedback_db.collect_feedback_enhanced(
+        # Assuming feedback_db.collect_feedback_enhanced is also async
+        return await feedback_db.collect_feedback_enhanced(
             query=query,
             response=result.get("answer", ""),
             user_rating=user_rating,
@@ -1003,10 +1035,10 @@ def collect_query_feedback_enhanced(query: str, result: Dict[str, Any], user_rat
         logger.error(f"Enhanced feedback collection failed: {e}")
         return False
 
-def get_performance_metrics_enhanced(days: int = 30) -> Dict[str, Any]:
+async def get_performance_metrics_enhanced(days: int = 30) -> Dict[str, Any]:
     """Get enhanced performance metrics with optimization data."""
     try:
-        base_metrics = feedback_db.get_performance_metrics(days)
+        base_metrics = await feedback_db.get_performance_metrics(days)
         optimization_stats = get_optimization_stats()
         cache_health = get_cache_health()
         
@@ -1023,8 +1055,8 @@ def get_performance_metrics_enhanced(days: int = 30) -> Dict[str, Any]:
                 },
                 'cache_health': cache_health
             },
-            'cost_savings': feedback_db.get_cost_savings_summary(days),
-            'processing_efficiency': feedback_db.get_processing_efficiency_metrics(days)
+            'cost_savings': await feedback_db.get_cost_savings_summary(days),
+            'processing_efficiency': await feedback_db.get_processing_efficiency_metrics(days)
         })
         
         return base_metrics
@@ -1032,10 +1064,10 @@ def get_performance_metrics_enhanced(days: int = 30) -> Dict[str, Any]:
         logger.error(f"Enhanced performance metrics failed: {e}")
         return {"error": str(e)}
 
-def get_system_health_enhanced() -> Dict[str, Any]:
+async def get_system_health_enhanced() -> Dict[str, Any]:
     """Get enhanced system health status with optimization monitoring."""
     try:
-        base_health = feedback_db.get_system_health()
+        base_health = await feedback_db.get_system_health()
         optimization_stats = get_optimization_stats()
         cache_health = get_cache_health()
         
@@ -1060,7 +1092,7 @@ def get_system_health_enhanced() -> Dict[str, Any]:
         logger.error(f"Enhanced system health check failed: {e}")
         return {"error": str(e), "status": "unhealthy"}
 
-def debug_query_processing_enhanced(question: str, embeddings: Embeddings) -> Dict[str, Any]:
+async def debug_query_processing_enhanced(question: str, embeddings: Embeddings) -> Dict[str, Any]:
     """Enhanced debug information for query processing with optimization details."""
     try:
         debug_info = {
@@ -1072,7 +1104,7 @@ def debug_query_processing_enhanced(question: str, embeddings: Embeddings) -> Di
         
         # Test query processing pipeline
         try:
-            result = rag_query_enhanced(question, embeddings, topn=3, enable_optimization=True)
+            result = await rag_query_enhanced(question, embeddings, topn=3, enable_optimization=True)
             debug_info['processing_result'] = {
                 'success': True,
                 'processing_time': result.get('processing_time', 0),
@@ -1163,14 +1195,17 @@ def initialize_optimizations():
     logger.info(f"   - Embedding Cache: {embedding_cache.max_memory_size} items max in memory")
     logger.info(f"   - Connection Pool: {db_pool.pool_size} connections")
     
-    # Register cleanup function
-    import atexit
-    atexit.register(cleanup_optimizations)
+    # NOTE: atexit cannot handle async functions.
+    # The cleanup must be called from the main application's shutdown sequence.
+    # For example, in a FastAPI app:
+    # @app.on_event("shutdown")
+    # async def shutdown_event():
+    #     await cleanup_optimizations()
 
-def cleanup_optimizations():
-    """Cleanup function to close connections and clear caches on exit."""
+async def cleanup_optimizations():
+    """Async cleanup function to close connections on exit."""
     try:
-        db_pool.close_all()
+        await db_pool.close_all()
         logger.info("[CLEANUP] Optimization cleanup completed")
     except Exception as e:
         logger.error(f"Error during optimization cleanup: {e}")
@@ -1215,3 +1250,8 @@ logger.info(f"Features enabled: Progressive={config.PROGRESSIVE_RETRIEVAL_ENABLE
            f"Hybrid={config.HYBRID_SEARCH_ENABLED}")
 logger.info(f"Chunk limits optimized: {config.OPTIMAL_CHUNK_LIMITS}")
 logger.info("Optimization features: Chunk Caching [SUCCESS], Embedding Caching [SUCCESS], Connection Pooling [SUCCESS]")
+
+
+
+
+

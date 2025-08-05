@@ -13,7 +13,7 @@ class ProgressiveRetriever:
         self.confidence_thresholds = config.CONFIDENCE_THRESHOLDS
         self.chunk_limits = config.OPTIMAL_CHUNK_LIMITS
     
-    def retrieve_progressively(self, queries: List[str], strategy: str, 
+    async def retrieve_progressively(self, queries: List[str], strategy: str, 
                              confidence: float) -> Tuple[List[Dict], Dict[str, Any]]:
         """Main progressive retrieval method with detailed tracking."""
         import time
@@ -26,7 +26,7 @@ class ProgressiveRetriever:
         # Stage 1: Initial retrieval with minimal chunks
         t0 = time.time()
         initial_chunks = min(target_chunks, 3)
-        stage1_results = self._initial_retrieval(queries, initial_chunks)
+        stage1_results = await self._initial_retrieval(queries, initial_chunks)
         t1 = time.time()
         logger.info(f"[Timing] Initial retrieval took {t1 - t0:.3f}s")
 
@@ -92,7 +92,7 @@ class ProgressiveRetriever:
         else:
             return min(max_chunks, min_chunks + 2)
     
-    def _initial_retrieval(self, queries: List[str], chunk_count: int) -> List[Dict]:
+    async def _initial_retrieval(self, queries: List[str], chunk_count: int) -> List[Dict]:
         """Stage 1: Initial retrieval with minimal chunks."""
         try:
             # Import the enhanced functions with proper handling
@@ -105,7 +105,7 @@ class ProgressiveRetriever:
             
             chunk_objects = []
             for uid, score_info in results:
-                chunk = get_chunk_by_id_enhanced(self.embeddings, uid)
+                chunk = await get_chunk_by_id_enhanced(self.embeddings, uid)
                 # Merge score info into chunk
                 chunk.update(score_info)
                 chunk["retrieval_stage"] = 1

@@ -29,6 +29,154 @@ MIN_TOKENS = 50
 MAX_TOKENS = 400
 CHUNK_OVERLAP = 50  # Added for overlapping chunks
 
+
+def clean_and_enhance_text(raw_text: str, is_table: bool = False) -> str:
+    """
+    Transform raw extracted text into enhanced, readable format.
+    
+    Args:
+        raw_text: Original text extracted from PDF/OCR
+        is_table: Whether this chunk represents table content
+    
+    Returns:
+        Enhanced, cleaned text with better formatting
+    """
+    if not raw_text or not raw_text.strip():
+        return raw_text
+    
+    text = raw_text.strip()
+    
+    if is_table:
+        # Enhanced table formatting
+        text = enhance_table_formatting(text)
+    else:
+        # Enhanced text formatting
+        text = enhance_text_formatting(text)
+    
+    return text
+
+def enhance_table_formatting(raw_table_text: str) -> str:
+    """Convert raw table text to properly formatted markdown table"""
+    try:
+        # Remove excessive whitespace
+        text = re.sub(r'\s+', ' ', raw_table_text.strip())
+        
+        # Detect if text contains pipe separators (common in extracted tables)
+        if '|' in text:
+            # Already has some table structure, enhance it
+            lines = text.split('\n')
+            formatted_lines = []
+            
+            for line in lines:
+                if line.strip():
+                    # Clean up pipe-separated content
+                    cells = [cell.strip() for cell in line.split('|') if cell.strip()]
+                    if cells:
+                        formatted_line = '| ' + ' | '.join(cells) + ' |'
+                        formatted_lines.append(formatted_line)
+            
+            if len(formatted_lines) > 1:
+                # Add header separator after first row
+                if formatted_lines:
+                    header_sep = '|' + '---|' * (formatted_lines[0].count('|') - 1)
+                    formatted_lines.insert(1, header_sep)
+            
+            return '\n'.join(formatted_lines)
+        
+        # Try to detect table patterns in unstructured text
+        # Look for patterns like "Item Value Item2 Value2"
+        words = text.split()
+        if len(words) >= 4 and len(words) % 2 == 0:
+            # Might be key-value pairs
+            pairs = []
+            for i in range(0, len(words), 2):
+                if i + 1 < len(words):
+                    pairs.append(f"| {words[i]} | {words[i+1]} |")
+            
+            if pairs:
+                header = "| Item | Value |"
+                separator = "|------|-------|"
+                return '\n'.join([header, separator] + pairs)
+        
+        # Fallback: return cleaned text
+        return text
+        
+    except Exception as e:
+        # If enhancement fails, return cleaned original
+        return re.sub(r'\s+', ' ', raw_table_text.strip())
+
+def enhance_text_formatting(raw_text: str) -> str:
+    """Enhance regular text formatting for better readability"""
+    try:
+        text = raw_text
+        
+        # Fix common OCR issues
+        text = fix_common_ocr_errors(text)
+        
+        # Improve paragraph structure
+        text = improve_paragraph_structure(text)
+        
+        # Enhance monetary and numeric formatting
+        text = enhance_numeric_formatting(text)
+        
+        # Clean up excessive whitespace
+        text = re.sub(r'\s+', ' ', text.strip())
+        text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
+        
+        return text
+        
+    except Exception as e:
+        # If enhancement fails, return cleaned original
+        return re.sub(r'\s+', ' ', raw_text.strip())
+
+def fix_common_ocr_errors(text: str) -> str:
+    """Fix common OCR misreadings"""
+    # Common OCR corrections
+    corrections = {
+        r'\bl\b': 'I',       # lowercase l -> I when standalone
+        r'\brn\b': 'm',      # rn -> m when it looks like OCR error
+    }
+    
+    for pattern, replacement in corrections.items():
+        text = re.sub(pattern, replacement, text)
+    
+    return text
+
+def improve_paragraph_structure(text: str) -> str:
+    """Improve paragraph breaks and structure"""
+    # Add proper paragraph breaks before common section headers
+    section_headers = [
+        'WHEREAS', 'NOW THEREFORE', 'Period:', 'License Fee', 
+        'Deposit:', 'Amount:', 'Total:', 'Summary:', 'Details:'
+    ]
+    
+    for header in section_headers:
+        pattern = f'({re.escape(header)})'
+        text = re.sub(pattern, f'\n\n\\1', text)
+    
+    # Clean up multiple paragraph breaks
+    text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
+    
+    return text
+
+def enhance_numeric_formatting(text: str) -> str:
+    """Enhance formatting of monetary amounts and numbers"""
+    # Format Indian currency amounts
+    text = re.sub(r'Rs\.?\s*(\d+)', r'Rs. \1', text)
+    text = re.sub(r'(\d+)\s*/-', r'\1/-', text)
+    
+    # Format percentages
+    text = re.sub(r'(\d+)\s*%', r'\1%', text)
+    
+    # Format dates
+    text = re.sub(r'(\d{1,2})/(\d{1,2})/(\d{4})', r'\1/\2/\3', text)
+    
+    return text
+
+# ==============================================================================
+# END TEXT ENHANCEMENT FUNCTIONS
+# ==============================================================================
+
 # Gemini API setup
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent"  # Updated to gemini-1.5-flash-8b
 GEMINI_CACHE_URL = "https://generativelanguage.googleapis.com/v1beta/cachedContents"  # For prompt caching
@@ -448,6 +596,11 @@ def process_single_document(file_path: Path, converter: DocumentConverter) -> Li
         # 6. Add text chunks with progress bar
         for idx, chunk in enumerate(tqdm(chunks, desc="Loading text chunks")):
             context = get_gemini_context_with_cache(whole_doc_content, chunk["chunk_text"])
+            
+            # Store original text and create enhanced version
+            original_text = chunk["chunk_text"]
+            enhanced_text = clean_and_enhance_text(original_text, is_table=False)
+            
             chunk_metadata = {
                 "document_name": str(result.input.file),
                 "chunk_id": f"{result.input.file}_text_{idx+1}",
@@ -455,8 +608,8 @@ def process_single_document(file_path: Path, converter: DocumentConverter) -> Li
                 "start_token": chunk["start_token"],
                 "end_token": chunk["end_token"],
                 "num_tokens": chunk["num_tokens"],
-                "raw_chunk_text": chunk["chunk_text"],
-                "chunk_text": chunk["chunk_text"],
+                "raw_chunk_text": original_text,  # Keep original extracted text
+                "chunk_text": enhanced_text,     # Store enhanced, readable text
                 "context": context,
                 "is_table": False
             }
@@ -464,6 +617,11 @@ def process_single_document(file_path: Path, converter: DocumentConverter) -> Li
         # 7. Add table chunks with progress bar
         for t_idx, t_chunk in enumerate(tqdm(table_chunks, desc="Loading table chunks")):
             context = get_gemini_context_with_cache(whole_doc_content, t_chunk["chunk_text"])
+            
+            # Store original table text and create enhanced version
+            original_table_text = t_chunk["chunk_text"]
+            enhanced_table_text = clean_and_enhance_text(original_table_text, is_table=True)
+            
             chunk_metadata = {
                 "document_name": str(result.input.file),
                 "chunk_id": f"{result.input.file}_table_{t_idx+1}",
@@ -471,8 +629,8 @@ def process_single_document(file_path: Path, converter: DocumentConverter) -> Li
                 "start_token": None,
                 "end_token": None,
                 "num_tokens": None,
-                "raw_chunk_text": t_chunk["chunk_text"],
-                "chunk_text": t_chunk["chunk_text"],
+                "raw_chunk_text": original_table_text,  # Keep original extracted table text
+                "chunk_text": enhanced_table_text,      # Store enhanced, formatted table
                 "context": context,
                 "is_table": True,
                 "num_rows": t_chunk["num_rows"],
