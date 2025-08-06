@@ -57,7 +57,7 @@ class ProgressiveRetriever:
         if additional_needed > 0:
             logger.info(f"Stage 2: retrieving {additional_needed} additional chunks")
             t4 = time.time()
-            stage2_results = self._expand_retrieval(queries, additional_needed, stage1_results)
+            stage2_results = await self._expand_retrieval(queries, additional_needed, stage1_results)
             t5 = time.time()
             logger.info(f"[Timing] Stage 2 retrieval took {t5 - t4:.3f}s")
             t6 = time.time()
@@ -99,7 +99,7 @@ class ProgressiveRetriever:
             from rag_backend import simple_retrieve_enhanced, get_chunk_by_id_enhanced
             
             # Use the first query for initial retrieval
-            results, retrieval_info = simple_retrieve_enhanced(
+            results, retrieval_info = await simple_retrieve_enhanced(
                 self.embeddings, [queries[0]], topn=chunk_count
             )
             
@@ -119,7 +119,7 @@ class ProgressiveRetriever:
             logger.error(f"Stage 1 retrieval failed: {e}")
             return []
     
-    def _expand_retrieval(self, queries: List[str], additional_count: int, 
+    async def _expand_retrieval(self, queries: List[str], additional_count: int, 
                          existing_results: List[Dict]) -> List[Dict]:
         """Stage 2: Expand retrieval with additional chunks."""
         try:
@@ -131,7 +131,7 @@ class ProgressiveRetriever:
             existing_uids = {chunk.get('chunk_id') for chunk in existing_results}
             
             # Retrieve more chunks
-            results, retrieval_info = simple_retrieve_enhanced(
+            results, retrieval_info = await simple_retrieve_enhanced(
                 self.embeddings, search_queries, 
                 topn=additional_count + len(existing_uids)
             )
@@ -139,7 +139,7 @@ class ProgressiveRetriever:
             new_chunk_objects = []
             for uid, score_info in results:
                 if uid not in existing_uids and len(new_chunk_objects) < additional_count:
-                    chunk = get_chunk_by_id_enhanced(self.embeddings, uid)
+                    chunk = await get_chunk_by_id_enhanced(self.embeddings, uid)
                     # Merge score info into chunk
                     chunk.update(score_info)
                     chunk["retrieval_stage"] = 2

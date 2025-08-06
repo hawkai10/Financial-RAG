@@ -3,6 +3,8 @@ import time
 import json
 import hashlib
 import numpy as np
+import re
+import threading
 from typing import List, Dict, Tuple, Any, Optional
 from functools import lru_cache, wraps
 from contextlib import contextmanager
@@ -773,51 +775,184 @@ def _format_html_response(response: str, strategy: str) -> str:
 async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
                       filters: Optional[Dict] = None, enable_reranking: bool = True,
                       session_id: str = None, enable_optimization: bool = True) -> Dict[str, Any]:
-    """Enhanced RAG pipeline with unified preprocessing and optimizations."""
+    """Enhanced RAG pipeline with hybrid query routing and unified preprocessing."""
     start_time = time.time()
-    logger.info(f"Starting enhanced RAG query: {question[:100]}...")
+    logger.info(f"Starting hybrid RAG query: {question[:100]}...")
     
     try:
-        # STEP 1: Unified preprocessing (single LLM call)
-        # This can be run in an executor if it becomes a bottleneck
+        # STEP 1: Enhanced unified preprocessing with hybrid classification
         processed = unified_processor.process_query_unified(question)
         corrected_query = processed['corrected_query']
         intent = processed['intent']
         confidence = processed['confidence']
         alternative_queries = processed['alternative_queries']
+        aggregation_type = processed.get('aggregation_type', 'none')
+        complexity_level = processed.get('complexity_level', 'simple')
+        requires_multi_step = processed.get('requires_multi_step', False)
         
+        logger.info(f"Hybrid classification: {intent} | Aggregation: {aggregation_type} | Complexity: {complexity_level}")
+        
+        # STEP 2: Route to appropriate agent based on classification
+        if intent == "Aggregation" and aggregation_type != 'none':
+            # Route to Mini-Agent for pattern-based extraction
+            logger.info(f"Routing to Mini-Agent: {aggregation_type}")
+            return await route_to_mini_agent(corrected_query, aggregation_type, embeddings, start_time)
+        
+        elif intent == "Analyse" and (complexity_level in ['moderate', 'complex'] or requires_multi_step):
+            # Route to Full Agent for complex reasoning
+            logger.info(f"Routing to Full-Agent: {complexity_level}")
+            return await route_to_full_agent(corrected_query, complexity_level, embeddings, start_time)
+        
+        else:
+            # Continue with Standard RAG pipeline (existing logic)
+            logger.info(f"Routing to Standard RAG: {intent}")
+            return await execute_standard_rag(
+                corrected_query, intent, confidence, alternative_queries, 
+                embeddings, topn, filters, enable_reranking, session_id, 
+                enable_optimization, start_time, processed  # Pass classification data
+            )
+            
+    except Exception as e:
+        logger.error(f"Hybrid RAG query failed: {e}")
+        return {
+            "answer": f"I encountered an error processing your query: {str(e)}",
+            "chunks": [],
+            "strategy": "Error",
+            "success": False,
+            "processing_time": time.time() - start_time
+        }
+
+async def route_to_mini_agent(query: str, aggregation_type: str, embeddings: Embeddings, start_time: float) -> Dict[str, Any]:
+    """Route query to Mini-Agent for pattern-based extraction."""
+    
+    try:
+        # Initialize Mini-Agent if not already done
+        from mini_agent import mini_agent, initialize_mini_agent
+        from progressive_retrieval import ProgressiveRetriever
+        
+        if mini_agent is None:
+            chunk_manager_instance = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
+            progressive_retriever = ProgressiveRetriever(embeddings)
+            initialize_mini_agent(chunk_manager_instance, progressive_retriever)
+        
+        # Process with Mini-Agent
+        result = await mini_agent.process_aggregation_query(query, aggregation_type)
+        
+        # Check if fallback is needed
+        if result.get('should_fallback', False):
+            logger.info("Mini-Agent recommends fallback to Standard RAG")
+            return await fallback_to_standard_rag(query, embeddings, start_time)
+        
+        # Add standard metadata
+        result.update({
+            "processing_time": time.time() - start_time,
+            "query": query,
+            "agent_used": "Mini-Agent",
+            "chunks": []  # Mini-agent doesn't return chunks in standard format
+        })
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Mini-Agent routing failed: {e}")
+        return await fallback_to_standard_rag(query, embeddings, start_time)
+
+async def route_to_full_agent(query: str, complexity_level: str, embeddings: Embeddings, start_time: float) -> Dict[str, Any]:
+    """Route query to Full Agent for complex reasoning."""
+    
+    try:
+        # Initialize Full Agent if not already done
+        from full_agent import full_agent, initialize_full_agent
+        from progressive_retrieval import ProgressiveRetriever
+        
+        if full_agent is None:
+            chunk_manager_instance = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
+            progressive_retriever = ProgressiveRetriever(embeddings)
+            initialize_full_agent(chunk_manager_instance, progressive_retriever, call_gemini_enhanced)
+        
+        # Process with Full Agent
+        result = await full_agent.process_complex_query(query, complexity_level)
+        
+        # Check if fallback is needed
+        if result.get('should_fallback', False):
+            logger.info("Full Agent recommends fallback to Standard RAG")
+            return await fallback_to_standard_rag(query, embeddings, start_time)
+        
+        # Add standard metadata
+        result.update({
+            "processing_time": time.time() - start_time,
+            "query": query,
+            "agent_used": "Full-Agent",
+            "chunks": []  # Full agent manages chunks internally
+        })
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Full Agent routing failed: {e}")
+        return await fallback_to_standard_rag(query, embeddings, start_time)
+
+async def fallback_to_standard_rag(query: str, embeddings: Embeddings, start_time: float) -> Dict[str, Any]:
+    """Fallback to standard RAG when agents fail."""
+    
+    logger.info("Falling back to Standard RAG pipeline")
+    
+    # Create basic classification for fallback
+    basic_classification = {
+        'corrected_query': query,
+        'intent': 'Standard',
+        'confidence': 0.5,
+        'reasoning': 'Fallback processing',
+        'alternative_queries': [query],
+        'aggregation_type': 'none',
+        'complexity_level': 'simple',
+        'requires_multi_step': False
+    }
+    
+    # Use existing standard RAG logic
+    return await execute_standard_rag(
+        query, "Standard", 0.8, [query], embeddings, 
+        topn=5, filters=None, enable_reranking=True, 
+        session_id=None, enable_optimization=True, 
+        start_time=start_time, processed=basic_classification
+    )
+
+async def execute_standard_rag(corrected_query: str, intent: str, confidence: float, 
+                             alternative_queries: List[str], embeddings: Embeddings,
+                             topn: int, filters: Optional[Dict], enable_reranking: bool,
+                             session_id: str, enable_optimization: bool, start_time: float,
+                             processed: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute the standard RAG pipeline (existing logic)."""
+    
+    try:
         # Map intent to strategy using config
         query_strategy = config.INTENT_TO_STRATEGY.get(intent, "Standard")
-        logger.info(f"Unified processing: {intent} -> {query_strategy} (confidence: {confidence:.3f})")
+        logger.info(f"Standard RAG processing: {intent} -> {query_strategy} (confidence: {confidence:.3f})")
         
-        # STEP 2: Generate multiqueries with unified results
+        # Generate multiqueries with unified results
         multiqueries = [corrected_query] + alternative_queries
         
-        # STEP 3: Strategy-specific retrieval with optimizations
+        # Strategy-specific retrieval with optimizations
         if config.PROGRESSIVE_RETRIEVAL_ENABLED:
             retriever = ProgressiveRetriever(embeddings)
-            # Assuming retrieve_progressively can be made async
             chunks, retrieval_info = await retriever.retrieve_progressively(multiqueries, query_strategy, confidence)
         else:
             chunk_results, retrieval_info = await enhanced_retrieve(embeddings, multiqueries, topn=topn, strategy=query_strategy)
             chunks = []
             if chunk_results:
-                # Asynchronously get chunk details
                 chunk_tasks = [get_chunk_by_id_enhanced(embeddings, uid) for uid, score_info in chunk_results]
                 retrieved_chunks = await asyncio.gather(*chunk_tasks)
                 
-                # Combine chunks with their scores
                 for i, chunk in enumerate(retrieved_chunks):
                     if chunk and not chunk.get("error"):
                         chunk.update(chunk_results[i][1])
                         chunks.append(chunk)
 
-        # STEP 4: Apply reranking if enabled
+        # Apply reranking if enabled
         optimization_result = None
         if enable_reranking and chunks:
             from document_reranker import EnhancedDocumentReranker
             reranker = EnhancedDocumentReranker()
-            # Reranking is CPU-bound, can be run in an executor
             chunks, rerank_info = reranker.rerank_chunks(corrected_query, chunks, query_strategy)
             
             # Apply aggregation optimization if needed
@@ -827,7 +962,7 @@ async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 
                 if optimization_result.get("catalog"):
                     chunks = optimization_result["catalog"].get("sample_content", chunks)
         
-        # STEP 5: Intelligent processing approach selection - Universal Hierarchical Processing
+        # Intelligent processing approach selection - Universal Hierarchical Processing
         estimated_total_tokens = _estimate_total_tokens(chunks, query_strategy)
         token_capacity = config.MAX_CONTEXT_LENGTH - 500
         
@@ -864,7 +999,7 @@ async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 
             hierarchical_stats = None
             logger.info(f"📄 Standard processing ({query_strategy}): {len(chunks)} chunks, est. tokens: {estimated_total_tokens}")
         
-        # ... (rest of the function remains largely the same)
+        # Calculate metrics and build response
         processing_time = time.time() - start_time
         avg_score = safe_mean([chunk.get('final_rerank_score', chunk.get('retrieval_score', 0)) for chunk in chunks])
         
@@ -887,14 +1022,14 @@ async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 
         result = {
             "answer": answer,
             "corrected_query": corrected_query,
-            "multiqueries": multiqueries,
+            "multiqueries": alternative_queries,
             "chunks": display_chunks,
             "all_chunks_count": len(chunks),
             "processing_time": processing_time,
             "session_id": session_id or "anonymous",
             "avg_relevance_score": round(avg_score, 3),
             "query_strategy": query_strategy,
-            "classification": processed,
+            "classification": processed,  # Add classification data
             "optimization_used": enable_optimization,
             "retrieval_method": retrieval_info.get("method", "unknown"),
             "retrieval_info": retrieval_info,
@@ -902,21 +1037,25 @@ async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 
             "savings_info": savings_info,
             "processing_method": processing_method,
             "hierarchical_stats": hierarchical_stats,
-            "optimization_stats": get_optimization_stats()
+            "agent_used": "Standard-RAG"
         }
         
         sanitized_result = sanitize_for_json(result)
-        logger.info(f"Enhanced RAG completed in {processing_time:.2f}s - Strategy: {query_strategy}, Chunks: {len(chunks)}, Savings: {savings_info.get('cost_reduction_percentage', 0):.1f}%")
+        logger.info(f"Standard RAG completed in {processing_time:.2f}s - Strategy: {query_strategy}, Chunks: {len(chunks)}")
         
         return sanitized_result
         
     except Exception as e:
         processing_time = time.time() - start_time
-        logger.error(f"Enhanced RAG query failed after {processing_time:.2f}s: {e}")
-        # This needs to be async now
-        return await _create_error_response_async(
-            str(e), question, [question], start_time, "error", {}, session_id
-        )
+        logger.error(f"Standard RAG pipeline failed: {e}")
+        return {
+            "answer": f"Standard RAG processing failed: {str(e)}",
+            "chunks": [],
+            "strategy": "Error",
+            "success": False,
+            "processing_time": processing_time,
+            "agent_used": "Standard-RAG"
+        }
 
 async def _create_error_response_async(error_msg: str, question: str, multiqueries: List[str], 
                           start_time: float, status: str, retrieval_info: Dict, 

@@ -1,0 +1,110 @@
+================================================================================
+HYBRID QUERY SYSTEM - DETAILED TEST LOG
+Test Run: 2025-08-07 00:03:32
+================================================================================
+
+
+============================================================
+TEST 1: Standard - Specific Information
+============================================================
+Query: What is the rent for the first year according to the rent agreement?
+Expected Agent: Standard-RAG
+------------------------------------------------------------
+CLASSIFICATION DETAILS:
+  Intent: Standard
+  Confidence: 0.95
+  Aggregation Type: none
+  Complexity Level: simple
+  Requires Multi-step: False
+  Corrected Query: What is the first-year rent as per the rental agreement?
+
+PROCESSING DETAILS:
+  Agent Used: Standard-RAG
+  Strategy: Standard
+  Processing Time: 9.80 seconds
+  Success: True
+
+FULL ANSWER (AS DISPLAYED IN UI):
+----------------------------------------
+<p>The first-year rent is 42,800 rupees per month.</p>
+----------------------------------------
+✅ ROUTING: Correct! Expected Standard-RAG, got Standard-RAG
+
+RETRIEVAL INFO: {'method': 'simple_enhanced', 'total_queries': 3, 'successful_queries': 3, 'total_chunks': 7, 'strategy': 'Standard'}
+
+CHUNKS USED: 5 chunks
+  Chunk 1: LEAVE AND LICENSE AGREEMENT This agreement is made and executed on 29/05/2023 at Mumbai Between, Nam...
+  Chunk 2: 42800/-(Forty-Two Thousand Eight Hundred Only) per month for the next 12 months. The amount of month...
+  Chunk 3: Shroff Viraj, aged about: 18 years, will also occupy the said premises with the Licensee. 2.- The Li...
+
+============================================================
+
+============================================================
+TEST 2: Aggregation - Invoice Recipients
+============================================================
+Query: List all the parties being issued an invoice by Bhartiya Enterprises?
+Expected Agent: Mini-Agent
+------------------------------------------------------------
+CLASSIFICATION DETAILS:
+  Intent: Standard
+  Confidence: 0.5
+  Aggregation Type: none
+  Complexity Level: simple
+  Requires Multi-step: False
+  Corrected Query: List all parties receiving invoices from Bhartiya Enterprises
+
+PROCESSING DETAILS:
+  Agent Used: Standard-RAG
+  Strategy: Standard
+  Processing Time: 8.38 seconds
+  Success: True
+
+FULL ANSWER (AS DISPLAYED IN UI):
+----------------------------------------
+<p>Seetharama Oil Industries (P) Ltd, Krishna Prabhash Agro Oil Pvt Ltd, Vijay Agro Products Pvt Ltd, Sriyansh Solvent Solution Pvt. Ltd, and Sri Venkta Srinivasa Oils Pvt Ltd.</p>
+----------------------------------------
+⚠️ ROUTING: Mismatch! Expected Mini-Agent, got Standard-RAG
+
+RETRIEVAL INFO: {'method': 'simple_enhanced', 'total_queries': 2, 'successful_queries': 2, 'total_chunks': 5, 'strategy': 'Standard'}
+
+CHUNKS USED: 5 chunks
+  Chunk 1: Tax Invoice Bhartiya Enterprises A/c (Yr 19-20) Chakulia , PO-Chakulia Dist East Singh Bhum GSTNO-20...
+  Chunk 2: Tax Invoice Bhartiya Enterprises A/c (Yr 19-20) Chakulia , PO-Chakulia Dist East Singh Bhum GSTNO-20...
+  Chunk 3: Tax Invoice Bhartiya Enterprises A/c (Yr 19-20) Chakulia , PO-Chakulia Dist East Singh Bhum GSTNO-20...
+
+============================================================
+
+============================================================
+TEST 3: Analysis - Impact Assessment
+============================================================
+Query: Please analyze the impact of using nifty 500 index for the research paper
+Expected Agent: Full-Agent
+------------------------------------------------------------
+CLASSIFICATION DETAILS:
+  Intent: Standard
+  Confidence: 0.5
+  Aggregation Type: none
+  Complexity Level: simple
+  Requires Multi-step: False
+  Corrected Query: Analyze the impact of using the Nifty 500 index for research.
+
+PROCESSING DETAILS:
+  Agent Used: Standard-RAG
+  Strategy: Standard
+  Processing Time: 7.47 seconds
+  Success: True
+
+FULL ANSWER (AS DISPLAYED IN UI):
+----------------------------------------
+<p>Using the Nifty 500 index as the research base in this study allowed for the creation of portfolios from stocks removed from the index over a five-year period.  This approach aimed to find undervalued stocks that were experiencing a period of recovery.  The study found that while the deletions-based strategy did not outperform the Nifty 500 in raw returns, it did demonstrate lower volatility, smaller drawdowns, and a higher Sharpe ratio, suggesting that it provided better risk-adjusted returns.  The strategy also generated a positive Jensen's alpha, meaning it outperformed expectations based solely on market exposure.  Importantly, this strategy performed well during market dislocations, where investor reactions can cause temporary undervaluation of sound companies.  The study also concluded that this approach could be valuable in designing ETFs and developing alternative factor strategies, particularly in emerging markets like India.</p>
+----------------------------------------
+⚠️ ROUTING: Mismatch! Expected Full-Agent, got Standard-RAG
+
+RETRIEVAL INFO: {'method': 'simple_enhanced', 'total_queries': 2, 'successful_queries': 2, 'total_chunks': 5, 'strategy': 'Standard'}
+
+CHUNKS USED: 5 chunks
+  Chunk 1: CONCLUSION This study set out to evaluate the performance and viability of a systematic deletionsbas...
+  Chunk 2: Performance Analysis of a Deletions -Based investment strategy in the Indian Equity Market Arvind Ke...
+  Chunk 3: Historical daily adjusted closing prices for Indian equities were collected using the yfinance Pytho...
+
+============================================================
