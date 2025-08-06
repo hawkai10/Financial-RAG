@@ -159,8 +159,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 <circle cx="9.5" cy="9.5" r="2.5" fill="white" opacity="0.3"/>
               </svg>
             </div>
-            <h1 className="text-5xl font-bold text-gray-800">
-              amber<span className="text-gray-600">Search</span>
+                        <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold text-slate-900 tracking-tight">
+              Rag<span className="text-gray-600">Search</span>
             </h1>
           </div>
         </div>
@@ -171,11 +171,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <SearchIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
+              className="w-full pl-12 pr-20 py-3 text-lg border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg"
+              placeholder="Search RagSearch..."
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="What are you looking for?"
-              className="w-full pl-12 pr-24 py-4 border border-gray-200 rounded-2xl text-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-lg"
             />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <span className="text-sm text-gray-400 bg-gray-100 px-2 py-1 rounded">Ctrl + K</span>
@@ -188,7 +188,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           onClick={onSearchSubmit}
           className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-xl text-lg font-medium transition-colors mb-12 shadow-lg"
         >
-          amberSearch
+          RagSearch
         </button>
 
         {/* Example queries */}

@@ -7,7 +7,7 @@ interface LoadingScreenProps {
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ query }) => {
   return (
     <div className="flex flex-col items-center justify-center h-full p-8">
-      {/* AmberAI Logo/Icon */}
+      {/* RagAI Logo/Icon */}
       <div className="w-16 h-16 bg-orange-400 rounded-full flex items-center justify-center mb-8">
         <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
           <div className="w-4 h-4 bg-orange-400 rounded-full animate-pulse"></div>

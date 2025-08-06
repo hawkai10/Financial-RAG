@@ -26,7 +26,10 @@ const RightPane: React.FC<RightPaneProps> = ({
         <div className="w-10 h-10 bg-orange-400 rounded-full flex items-center justify-center">
           <ChatBubbleIcon className="w-6 h-6 text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800">amber<span className="text-orange-400">AI</span></h2>
+              <div className="border-b border-slate-300 pb-4 mb-6">
+        <h2 className="text-2xl font-bold text-slate-800">Rag<span className="text-orange-400">AI</span></h2>
+        <p className="text-sm text-slate-600 mt-1">Financial Document Intelligence</p>
+      </div>
       </div>
       
       {isLoading && <LoadingScreen query={currentQuery} />}
