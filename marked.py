@@ -6,6 +6,7 @@ import hashlib
 import requests
 import textwrap
 import atexit
+import time
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -18,6 +19,7 @@ import camelot
 import pdfplumber
 
 # -------------------
+
 # Configuration
 
 # Directories and output filenames
@@ -29,8 +31,35 @@ CACHE_FILE = "llm_response_cache.json"
 # Tokenizer setup
 ENCODING = tiktoken.get_encoding("cl100k_base")
 MIN_TOKENS = 50
-MAX_TOKENS = 400          # Updated token max size
-CHUNK_OVERLAP = 100       # Updated chunk overlap
+MAX_TOKENS = 400  # Max tokens per chunk as requested
+CHUNK_OVERLAP = 100  # Overlap tokens
+
+# Text Processing Configuration
+TEXT_PROCESSING_CONFIG = {
+    "section_patterns": [
+        r'\b(whereas|now\s+therefore)\b',
+        r'\b(period|license\s+fee|deposit|amount|total|summary|details)\s*:',
+        r'\b(electricity\s+charges|cancellation|lock\s+in\s+period)\s*:',
+        r'\b(late\s+payment|bank\s+guarantee)\b',
+        r'\b(gstin?|pan|cin|fssai)\s*:?',
+        r'\b(invoice|bill|receipt)\s+(no\.?|number)\s*:?'
+    ],
+    "currency_patterns": [
+        r'\b(rs\.?|inr|₹)\s*(\d+)',
+        r'(\d+)\s*/-',
+        r'(\d+)\s*%',
+        r'(\d{1,2})/(\d{1,2})/(\d{4})',
+        r'(\d+)\s*,\s*(\d+)',
+    ],
+    "ocr_corrections": {
+        r'\bl\b': 'I',        # lowercase l standalone -> I
+        r'\brn\b': 'm',       # "rn" mistaken for letter m
+        r'ﬁ': 'fi',           # ligatures
+        r'ﬂ': 'fl',
+        r'\b0(?=\s|$)': 'O',  # zero to capital O in specific contexts
+        r'\b5(?=\s|$)': 'S',  # digit 5 mistakenly read as S
+    }
+}
 
 # Gemini API details
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent"
@@ -44,7 +73,27 @@ LLM_RESPONSE_CACHE = {}
 GEMINI_CACHED_CONTEXTS = {}
 
 # -------------------
+
 # Utility functions for caching
+
+def load_text_processing_config():
+    """
+    Load text processing configuration from external file if available.
+    Falls back to default configuration if file doesn't exist.
+    """
+    config_file = Path(__file__).parent / "text_processing_config.json"
+    
+    if config_file.exists():
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                custom_config = json.load(f)
+                # Merge with default config
+                TEXT_PROCESSING_CONFIG.update(custom_config)
+                print(f"Loaded custom text processing configuration from {config_file}")
+        except Exception as e:
+            print(f"Warning: Could not load custom config: {e}")
+    
+    return TEXT_PROCESSING_CONFIG
 
 def load_local_cache():
     global LLM_RESPONSE_CACHE
@@ -65,42 +114,49 @@ def save_local_cache():
         print(f"Warning: Could not save cache file: {e}")
 
 atexit.register(save_local_cache)
+load_text_processing_config()  # Load configuration first
 load_local_cache()
 
 # -------------------
+
 # Text enhancement functions
 
 def fix_common_ocr_errors(text: str) -> str:
-    corrections = {
-        r'\bl\b': 'I',            # lowercase l standalone -> I
-        r'\brn\b': 'm',           # rn looks like m
-        r'ﬁ': 'fi',               # ligature fi
-        r'ﬂ': 'fl',               # ligature fl
-        r'\b0\b': 'O',            # zero to capital O in some contexts
-        r'\b5\b': 'S',            # digit 5 to letter S OCR error
-    }
+    """
+    Fix common OCR errors using configurable patterns.
+    """
+    corrections = TEXT_PROCESSING_CONFIG["ocr_corrections"]
     for pattern, replacement in corrections.items():
         text = re.sub(pattern, replacement, text)
     return text
 
 def improve_paragraph_structure(text: str) -> str:
-    section_headers = [
-        'WHEREAS', 'NOW THEREFORE', 'Period:', 'License Fee',
-        'Deposit:', 'Amount:', 'Total:', 'Summary:', 'Details:'
-    ]
-    for header in section_headers:
-        pattern = f'({re.escape(header)})'
-        text = re.sub(pattern, f'\n\n\\1', text)
-    # Collapse multiple paragraph breaks to max two
-    text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
+    """
+    Improve paragraph structure using pattern-based section detection.
+    """
+    section_patterns = TEXT_PROCESSING_CONFIG["section_patterns"]
+    
+    for pattern in section_patterns:
+        # Add paragraph breaks before section headers
+        text = re.sub(pattern, r'\n\n\g<0>', text, flags=re.IGNORECASE)
+    
+    # Collapse multiple paragraph breaks to a maximum of two
+    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
     return text
 
 def enhance_numeric_formatting(text: str) -> str:
-    # Indian currency formatting and dates
-    text = re.sub(r'Rs\.?\s*(\d+)', r'Rs. \1', text)
-    text = re.sub(r'(\d+)\s*/-', r'\1/-', text)
-    text = re.sub(r'(\d+)%', r'\1%', text)  # Ensure no spaces in percentages
-    text = re.sub(r'(\d{1,2})/(\d{1,2})/(\d{4})', r'\1/\2/\3', text)
+    """
+    Enhance numeric formatting using configurable patterns.
+    """
+    currency_patterns = TEXT_PROCESSING_CONFIG["currency_patterns"]
+    
+    # Apply currency formatting patterns
+    text = re.sub(currency_patterns[0], r'\1 \2', text, flags=re.IGNORECASE)  # Rs./INR formatting
+    text = re.sub(currency_patterns[1], r'\1/-', text)  # Amount with /-
+    text = re.sub(currency_patterns[2], r'\1%', text)   # Percentage
+    text = re.sub(currency_patterns[3], r'\1/\2/\3', text)  # Date formatting
+    text = re.sub(currency_patterns[4], r'\1,\2', text)  # Number with comma
+    
     return text
 
 def enhance_text_formatting(raw_text: str) -> str:
@@ -109,7 +165,7 @@ def enhance_text_formatting(raw_text: str) -> str:
         text = fix_common_ocr_errors(text)
         text = improve_paragraph_structure(text)
         text = enhance_numeric_formatting(text)
-        text = re.sub(r'\s+', ' ', text.strip())
+        text = re.sub(r'[ \t]+', ' ', text.strip())
         text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
         return text
     except Exception:
@@ -118,23 +174,23 @@ def enhance_text_formatting(raw_text: str) -> str:
 def enhance_table_formatting(raw_table_text: str) -> str:
     try:
         text = textwrap.dedent(raw_table_text).strip()
-        # Normalize pipes - ensure one space around pipe separators
-        text = re.sub(r'\s*\|\s*', ' | ', text)
+        text = re.sub(r'\s*\|\s*', ' | ', text)  # Normalize spaces around pipes
         lines = [line.strip() for line in text.split('\n') if line.strip()]
-
         if len(lines) < 2:
             return text
-
         header_line = lines[0]
         second_line = lines[1]
-
-        # Add markdown separator if missing
-        if not re.match(r'(\|\s*:?-+:?\s*)+\|?', second_line):
+        if not re.match(r'^\|?(\s*:?-+:?\s*\|)+\s*$', second_line):
+            # Insert markdown header separator after header line
             num_cols = header_line.count('|') - 1
             separator = '|' + ' --- |' * num_cols
             lines.insert(1, separator)
-
-        return '\n'.join(lines)
+        # Remove redundant trailing pipes or spaces
+        clean_lines = []
+        for line in lines:
+            line = re.sub(r'\|\s*$', '|', line)  # remove trailing spaces before pipe
+            clean_lines.append(line)
+        return '\n'.join(clean_lines)
     except Exception:
         return re.sub(r'\s+', ' ', raw_table_text.strip())
 
@@ -149,7 +205,8 @@ def clean_and_enhance_text(raw_text: str, is_table: bool = False) -> str:
     return text
 
 # -------------------
-# Document and chunk extraction
+
+# Document and chunk extraction functions
 
 def extract_full_text(docling_document) -> str:
     all_text = []
@@ -158,7 +215,13 @@ def extract_full_text(docling_document) -> str:
             all_text.append(item.text)
     return "\n".join(all_text)
 
-def chunk_text_tiktoken(text: str, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS, overlap=CHUNK_OVERLAP, encoding=ENCODING):
+def chunk_text_tiktoken(
+    text: str,
+    min_tokens=MIN_TOKENS,
+    max_tokens=MAX_TOKENS,
+    overlap=CHUNK_OVERLAP,
+    encoding=ENCODING
+):
     paragraphs = re.split(r'\n\s*\n', text.strip())
     chunks = []
     current_chunk = ""
@@ -173,7 +236,7 @@ def chunk_text_tiktoken(text: str, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS,
         para_tokens = len(encoding.encode(paragraph))
 
         if para_tokens > max_tokens:
-            # Handle large paragraphs by sentence splitting
+            # If paragraph too big, split on sentences
             if current_chunk and current_tokens >= min_tokens:
                 chunks.append({
                     "chunk_text": current_chunk.strip(),
@@ -251,6 +314,10 @@ def chunk_text_tiktoken(text: str, min_tokens=MIN_TOKENS, max_tokens=MAX_TOKENS,
     return chunks
 
 def extract_table_chunks(docling_document):
+    """
+    Extract complete tables as single chunks.
+    Tables are kept whole regardless of size to maintain data integrity.
+    """
     table_chunks = []
     for item, _level in docling_document.iterate_items():
         if hasattr(item, 'data'):
@@ -259,21 +326,26 @@ def extract_table_chunks(docling_document):
             num_rows = getattr(data, 'num_rows', 0)
             num_cols = getattr(data, 'num_cols', 0)
             if cells and num_rows > 0 and num_cols > 0:
+                # Build complete table grid
                 grid = [["" for _ in range(num_cols)] for _ in range(num_rows)]
                 for cell in cells:
                     for r in range(cell.start_row_offset_idx, cell.end_row_offset_idx):
                         for c in range(cell.start_col_offset_idx, cell.end_col_offset_idx):
                             grid[r][c] = cell.text
+                
+                # Create markdown table (complete table as single chunk)
                 header = "| " + " | ".join(grid[0]) + " |" if grid else ""
                 separator = "|" + "---|" * num_cols
                 body = ["| " + " | ".join(row) + " |" for row in grid[1:]]
                 md_table = "\n".join([header, separator] + body)
+                
                 table_chunks.append({
                     "chunk_text": md_table,
                     "is_table": True,
-                    "table_index": 0,
+                    "table_index": len(table_chunks),  # Sequential index
                     "num_rows": num_rows,
-                    "num_cols": num_cols
+                    "num_cols": num_cols,
+                    "processing_note": "Complete table preserved as single chunk"
                 })
     return table_chunks
 
@@ -282,46 +354,71 @@ def extract_tables_with_camelot(pdf_path, pages="all"):
     return [table.df for table in tables]
 
 def hybrid_table_extraction(docling_tables, pdf_path):
-    # Prefer Docling tables
+    # Prefer Docling tables if present
     if docling_tables:
         return docling_tables, 'docling'
-    # Fallback to Camelot tables
+    # Fallback to Camelot extracted tables
     camelot_tables = extract_tables_with_camelot(pdf_path)
     if camelot_tables:
         return camelot_tables, 'camelot'
     return [], None
 
-def merge_adjacent_tables(table_chunks):
+def merge_adjacent_tables(table_chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Merge adjacent tables only if they have identical structure.
+    Conservative approach to preserve table integrity.
+    """
+    if not table_chunks:
+        return []
+    
     merged = []
     buffer = []
     last_num_cols = None
-
+    
     for chunk in table_chunks:
-        if last_num_cols is not None and chunk['num_cols'] == last_num_cols:
+        current_cols = chunk['num_cols']
+        
+        # Only merge tables with identical column structure
+        if last_num_cols is not None and current_cols == last_num_cols:
             buffer.append(chunk)
         else:
+            # Process the current buffer
             if buffer:
-                merged_text = '\n'.join(c['chunk_text'] for c in buffer)
-                merged_chunk = buffer[0].copy()
-                merged_chunk['chunk_text'] = merged_text
-                merged_chunk['raw_chunk_text'] = merged_text
-                merged_chunk['num_rows'] = sum(c['num_rows'] for c in buffer)
-                merged.append(merged_chunk)
+                if len(buffer) == 1:
+                    # Single table, keep as is
+                    merged.append(buffer[0])
+                else:
+                    # Multiple tables with same structure, merge carefully
+                    merged_text = '\n\n'.join(c['chunk_text'] for c in buffer)
+                    merged_chunk = buffer[0].copy()
+                    merged_chunk['chunk_text'] = merged_text
+                    merged_chunk['raw_chunk_text'] = merged_text
+                    merged_chunk['num_rows'] = sum(c['num_rows'] for c in buffer)
+                    merged_chunk['processing_note'] = f"Merged {len(buffer)} tables with identical structure"
+                    merged.append(merged_chunk)
                 buffer = []
+            
+            # Start new buffer
             buffer = [chunk]
-            last_num_cols = chunk['num_cols']
-
+            last_num_cols = current_cols
+    
+    # Process final buffer
     if buffer:
-        merged_text = '\n'.join(c['chunk_text'] for c in buffer)
-        merged_chunk = buffer[0].copy()
-        merged_chunk['chunk_text'] = merged_text
-        merged_chunk['raw_chunk_text'] = merged_text
-        merged_chunk['num_rows'] = sum(c['num_rows'] for c in buffer)
-        merged.append(merged_chunk)
-
+        if len(buffer) == 1:
+            merged.append(buffer[0])
+        else:
+            merged_text = '\n\n'.join(c['chunk_text'] for c in buffer)
+            merged_chunk = buffer[0].copy()
+            merged_chunk['chunk_text'] = merged_text
+            merged_chunk['raw_chunk_text'] = merged_text
+            merged_chunk['num_rows'] = sum(c['num_rows'] for c in buffer)
+            merged_chunk['processing_note'] = f"Merged {len(buffer)} tables with identical structure"
+            merged.append(merged_chunk)
+    
     return merged
 
 # -------------------
+
 # Gemini LLM integration (context generation)
 
 def get_prompt_template():
@@ -363,7 +460,7 @@ def create_cached_context(document_text):
         cached_content_name = result["name"]
         GEMINI_CACHED_CONTEXTS[doc_hash] = cached_content_name
         return cached_content_name
-    except Exception as e:
+    except Exception:
         return None
 
 def get_gemini_context_with_cache(document_text: str, chunk_text: str) -> str:
@@ -405,7 +502,8 @@ def get_gemini_context_with_cache(document_text: str, chunk_text: str) -> str:
         return ""
 
 # -------------------
-# Processing documents
+
+# Processing document and saving output
 
 def concatenate_text_and_tables(text: str, table_chunks: List[Dict[str, Any]]) -> str:
     content = text.strip()
@@ -422,89 +520,215 @@ def save_extracted_log(file_path: Path, extracted_content: str):
         f.write(extracted_content)
     print(f"Saved extracted content to {log_path}")
 
+def is_boilerplate(text: str) -> bool:
+    """
+    Dynamic boilerplate detection using patterns from configuration.
+    This approach is more flexible and language-agnostic.
+    """
+    stripped_text = text.strip().lower()
+    
+    # Length-based filtering
+    if len(stripped_text) < 20:
+        return True
+    
+    # Get patterns from configuration (fallback to default if not available)
+    boilerplate_patterns = TEXT_PROCESSING_CONFIG.get("boilerplate_patterns", [
+        r'\be\.?\s*&?\s*o\.?\s*e\.?\b',  # E. & O.E variations
+        r'\bauthori[sz]ed\s+signatory\b',  # Authorized/Authorised Signatory
+        r'\bsystem\s+generated\b',  # System generated variations
+        r'^\s*page\s*\d*\s*$',  # Page numbers only
+        r'\bthank\s+you\s+for\s+(your\s+)?business\b',  # Thank you variations
+        r'^\s*\d+\s*$',  # Just numbers
+        r'^\s*[a-z]\s*$',  # Single letters
+        r'\b(pvt\.?\s*ltd\.?|limited|llc|inc\.?)\s*$',  # Company suffixes only
+        r'^\s*(dr\.?|cr\.?)\s*$',  # Debit/Credit abbreviations only
+        r'^\s*rs\.?\s*$',  # Currency symbol only
+        r'^\s*\|\s*\|\s*$',  # Empty table cells
+    ])
+    
+    for pattern in boilerplate_patterns:
+        if re.search(pattern, stripped_text, re.IGNORECASE):
+            return True
+    
+    # Statistical checks for repetitive content
+    words = stripped_text.split()
+    if len(words) <= 3 and len(set(words)) == 1:  # Repeated single word
+        return True
+    
+    # Check for excessive punctuation (likely formatting artifacts)
+    punct_ratio = sum(1 for c in stripped_text if c in '.,;:!?|-_()[]{}') / len(stripped_text)
+    if punct_ratio > 0.5:  # More than 50% punctuation
+        return True
+    
+    return False
+
 def process_single_document(file_path: Path, converter: DocumentConverter) -> List[Dict[str, Any]]:
-    result = converter.convert(file_path)
+    """
+    Process a single document with comprehensive error handling and logging.
+    """
+    start_time = time.time()
     chunks_for_doc = []
+    
+    try:
+        print(f"🔄 Processing document: {file_path.name}")
+        conversion_start = time.time()
+        result = converter.convert(file_path)
+        conversion_time = time.time() - conversion_start
+        print(f"⏱️  Document conversion: {conversion_time:.2f}s")
+        
+        if not hasattr(result, "document") or result.document is None:
+            print(f"❌ No document object found in result for {file_path}")
+            return chunks_for_doc
 
-    if hasattr(result, "document") and result.document is not None:
         full_text = extract_full_text(result.document)
-        docling_tables = extract_table_chunks(result.document)
-        fallback_tables, table_source = hybrid_table_extraction(docling_tables, str(result.input.file))
+        if not full_text.strip():
+            print(f"❌ No text extracted from document '{file_path}'")
+            return chunks_for_doc
 
-        # Use Camelot tables if docling fails
+        print(f"✅ Extracted {len(full_text)} characters of text")
+
+        # Table extraction with error handling
+        try:
+            docling_tables = extract_table_chunks(result.document)
+            fallback_tables, table_source = hybrid_table_extraction(docling_tables, str(result.input.file))
+            print(f"📊 Table extraction: {len(docling_tables)} complete tables via {table_source or 'none'}")
+        except Exception as e:
+            print(f"⚠️  Table extraction failed: {e}")
+            docling_tables, fallback_tables, table_source = [], [], None
+
+        # Use Camelot tables if docling tables missing
         table_chunks = []
         if table_source == 'docling':
             table_chunks = docling_tables
         elif table_source == 'camelot':
             for idx, df in enumerate(fallback_tables):
-                header = '| ' + ' | '.join(df.iloc[0]) + ' |'
-                separator = '|' + '---|' * len(df.columns)
-                body = ['| ' + ' | '.join(map(str, row)) + ' |' for row in df.iloc[1:].values]
-                md_table = '\n'.join([header, separator] + body)
-                table_chunks.append({
-                    "chunk_text": md_table,
-                    "is_table": True,
-                    "table_index": idx,
-                    "num_rows": len(df),
-                    "num_cols": len(df.columns)
-                })
+                try:
+                    # Process complete table as single chunk
+                    header = '| ' + ' | '.join(df.iloc[0]) + ' |'
+                    separator = '|' + '---|' * len(df.columns)
+                    body = ['| ' + ' | '.join(map(str, row)) + ' |' for row in df.iloc[1:].values]
+                    md_table = '\n'.join([header, separator] + body)
+                    table_chunks.append({
+                        "chunk_text": md_table,
+                        "is_table": True,
+                        "table_index": idx,
+                        "num_rows": len(df),
+                        "num_cols": len(df.columns),
+                        "processing_note": "Complete Camelot table preserved as single chunk"
+                    })
+                except Exception as e:
+                    print(f"⚠️  Failed to process table {idx}: {e}")
+                    continue
 
-        # Merge adjacent tables with same columns
-        table_chunks = merge_adjacent_tables(table_chunks)
+        # Merge adjacent tables with same columns count to reduce fragmentation
+        try:
+            table_chunks = merge_adjacent_tables(table_chunks)
+            print(f"✅ Processed {len(table_chunks)} complete table chunks (kept as atomic units)")
+        except Exception as e:
+            print(f"⚠️  Table merging failed: {e}")
 
-        whole_doc_content = concatenate_text_and_tables(full_text, table_chunks)
-        save_extracted_log(result.input.file, whole_doc_content)
-        create_cached_context(whole_doc_content)  # Cache once for document
+        # Context generation with error handling
+        try:
+            whole_doc_content = concatenate_text_and_tables(full_text, table_chunks)
+            save_extracted_log(result.input.file, whole_doc_content)
+            create_cached_context(whole_doc_content)  # Cache the document once
+        except Exception as e:
+            print(f"⚠️  Context preparation failed: {e}")
+            whole_doc_content = full_text
 
-        # Chunk text paragraphs
-        chunks = chunk_text_tiktoken(full_text)
-        for idx, chunk in enumerate(tqdm(chunks, desc="Loading text chunks")):
-            context = get_gemini_context_with_cache(whole_doc_content, chunk["chunk_text"])
-            original_text = chunk["chunk_text"]
-            enhanced_text = clean_and_enhance_text(original_text, is_table=False)
-            chunk_metadata = {
-                "document_name": str(result.input.file),
-                "chunk_id": f"{result.input.file}_text_{idx+1}",
-                "chunk_index": idx,
-                "start_token": chunk["start_token"],
-                "end_token": chunk["end_token"],
-                "num_tokens": chunk["num_tokens"],
-                "raw_chunk_text": original_text,
-                "chunk_text": enhanced_text,
-                "context": context,
-                "is_table": False
-            }
-            chunks_for_doc.append(chunk_metadata)
+        # --- Process paragraph text chunks ---
+        try:
+            chunks = chunk_text_tiktoken(full_text)
+            print(f"📝 Generated {len(chunks)} text chunks")
+            
+            processed_chunks = 0
+            for idx, chunk in enumerate(tqdm(chunks, desc="Loading text chunks")):
+                try:
+                    original_text = chunk["chunk_text"]
+                    if is_boilerplate(original_text):
+                        continue  # Skip empty/boilerplate chunks
+                    
+                    enhanced_text = clean_and_enhance_text(original_text, is_table=False)
+                    context = get_gemini_context_with_cache(whole_doc_content, original_text)
 
-        # Process table chunks
-        for t_idx, t_chunk in enumerate(tqdm(table_chunks, desc="Loading table chunks")):
-            context = get_gemini_context_with_cache(whole_doc_content, t_chunk["chunk_text"])
-            original_table_text = t_chunk["chunk_text"]
-            enhanced_table_text = clean_and_enhance_text(original_table_text, is_table=True)
-            chunk_metadata = {
-                "document_name": str(result.input.file),
-                "chunk_id": f"{result.input.file}_table_{t_idx+1}",
-                "chunk_index": t_idx,
-                "start_token": None,
-                "end_token": None,
-                "num_tokens": None,
-                "raw_chunk_text": original_table_text,
-                "chunk_text": enhanced_table_text,
-                "context": context,
-                "is_table": True,
-                "num_rows": t_chunk.get("num_rows"),
-                "num_cols": t_chunk.get("num_cols")
-            }
-            chunks_for_doc.append(chunk_metadata)
+                    chunk_metadata = {
+                        "document_name": str(result.input.file),
+                        "chunk_id": f"{result.input.file}_text_{idx+1}",
+                        "chunk_index": idx,
+                        "start_token": chunk["start_token"],
+                        "end_token": chunk["end_token"],
+                        "num_tokens": chunk["num_tokens"],
+                        "raw_chunk_text": original_text,
+                        "chunk_text": enhanced_text,
+                        "context": context,
+                        "is_table": False,
+                        "chunk_type": "paragraph"
+                    }
+                    chunks_for_doc.append(chunk_metadata)
+                    processed_chunks += 1
+                except Exception as e:
+                    print(f"⚠️  Failed to process text chunk {idx}: {e}")
+                    continue
+            
+            print(f"✅ Successfully processed {processed_chunks} text chunks")
+        
+        except Exception as e:
+            print(f"❌ Text chunking failed: {e}")
 
-    if hasattr(result, 'errors') and result.errors:
-        print("Errors:")
-        for error in result.errors:
-            print(f" - {error.error_message}")
+        # --- Process extracted table chunks ---
+        try:
+            processed_tables = 0
+            for t_idx, t_chunk in enumerate(tqdm(table_chunks, desc="Loading table chunks")):
+                try:
+                    original_table_text = t_chunk["chunk_text"]
+                    if is_boilerplate(original_table_text):
+                        continue  # Skip boilerplate tables
+                    
+                    enhanced_table_text = clean_and_enhance_text(original_table_text, is_table=True)
+                    context = get_gemini_context_with_cache(whole_doc_content, original_table_text)
 
-    return chunks_for_doc
+                    chunk_metadata = {
+                        "document_name": str(result.input.file),
+                        "chunk_id": f"{result.input.file}_table_{t_idx+1}",
+                        "chunk_index": t_idx,
+                        "start_token": None,
+                        "end_token": None,
+                        "num_tokens": None,  # Tables are kept whole, no token splitting
+                        "raw_chunk_text": original_table_text,
+                        "chunk_text": enhanced_table_text,
+                        "context": context,
+                        "is_table": True,
+                        "chunk_type": "table",
+                        "num_rows": t_chunk.get("num_rows"),
+                        "num_cols": t_chunk.get("num_cols"),
+                        "table_size": "complete"  # Indicates table is kept as single unit
+                    }
+                    chunks_for_doc.append(chunk_metadata)
+                    processed_tables += 1
+                except Exception as e:
+                    print(f"⚠️  Failed to process table chunk {t_idx}: {e}")
+                    continue
+            
+            print(f"✅ Successfully processed {processed_tables} complete table chunks (no token splitting)")
+        
+        except Exception as e:
+            print(f"❌ Table chunk processing failed: {e}")
+
+        if hasattr(result, 'errors') and result.errors:
+            print("Document conversion errors:")
+            for error in result.errors:
+                print(f" - {error.error_message}")
+
+        total_time = time.time() - start_time
+        print(f"🎉 Document processing complete: {len(chunks_for_doc)} total chunks in {total_time:.2f}s")
+        return chunks_for_doc
+    
+    except Exception as e:
+        print(f"❌ Critical error processing {file_path}: {e}")
+        return []
 
 # -------------------
+
 # Save results
 
 def save_results(all_contextualized_chunks: List[Dict[str, Any]]) -> None:
@@ -526,7 +750,8 @@ def save_results(all_contextualized_chunks: List[Dict[str, Any]]) -> None:
         print(f"Saved {len(all_contextualized_chunks)} contextualized chunks to {OUTPUT_CSV}")
 
 # -------------------
-# Main entry point
+
+# Main entry
 
 def main():
     if not SOURCE_DIR.exists() or not SOURCE_DIR.is_dir():
@@ -558,6 +783,7 @@ def main():
     save_results(all_contextualized_chunks)
 
 # -------------------
+
 # CLI support
 
 if __name__ == "__main__":
@@ -583,6 +809,8 @@ if __name__ == "__main__":
                         existing_chunks = json.load(f)
                 except Exception:
                     existing_chunks = []
+
+            # Remove previous chunks from the same file to avoid duplicates
             existing_chunks = [c for c in existing_chunks if c.get('document_name') != str(file_path)]
             existing_chunks.extend(chunks)
             save_results(existing_chunks)

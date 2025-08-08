@@ -26,6 +26,10 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
     GEMINI_API_URL: str = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent"
     
+    # Chunking Engine Configuration
+    MARKED_AS_PRIMARY_CHUNKER: bool = True
+    USE_AUTO_PARSE_FALLBACK: bool = False
+
     # File Paths
     INDEX_PATH: str = "business-docs-index"
     CHUNKS_FILE: str = "contextualized_chunks.json"

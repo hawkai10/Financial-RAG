@@ -1,0 +1,42 @@
+{
+  "section_patterns": [
+    "\\b(whereas|now\\s+therefore)\\b",
+    "\\b(period|license\\s+fee|deposit|amount|total|summary|details)\\s*:",
+    "\\b(electricity\\s+charges|cancellation|lock\\s+in\\s+period)\\s*:",
+    "\\b(late\\s+payment|bank\\s+guarantee)\\b",
+    "\\b(gstin?|pan|cin|fssai)\\s*:?",
+    "\\b(invoice|bill|receipt)\\s+(no\\.?|number)\\s*:?",
+    "\\b(tax|gst|vat|service\\s+tax)\\b",
+    "\\b(due\\s+date|payment\\s+terms)\\s*:?"
+  ],
+  "currency_patterns": [
+    "\\b(rs\\.?|inr|₹)\\s*(\\d+)",
+    "(\\d+)\\s*/-",
+    "(\\d+)\\s*%",
+    "(\\d{1,2})/(\\d{1,2})/(\\d{4})",
+    "(\\d+)\\s*,\\s*(\\d+)"
+  ],
+  "ocr_corrections": {
+    "\\bl\\b": "I",
+    "\\brn\\b": "m",
+    "ﬁ": "fi",
+    "ﬂ": "fl",
+    "\\b0(?=\\s|$)": "O",
+    "\\b5(?=\\s|$)": "S",
+    "\\bO(?=\\d)": "0",
+    "\\bI(?=\\d)": "1"
+  },
+  "boilerplate_patterns": [
+    "\\be\\.?\\s*&?\\s*o\\.?\\s*e\\.?\\b",
+    "\\bauthori[sz]ed\\s+signatory\\b",
+    "\\bsystem\\s+generated\\b",
+    "^\\s*page\\s*\\d*\\s*$",
+    "\\bthank\\s+you\\s+for\\s+(your\\s+)?business\\b",
+    "^\\s*\\d+\\s*$",
+    "^\\s*[a-z]\\s*$",
+    "\\b(pvt\\.?\\s*ltd\\.?|limited|llc|inc\\.?)\\s*$",
+    "^\\s*(dr\\.?|cr\\.?)\\s*$",
+    "^\\s*rs\\.?\\s*$",
+    "^\\s*\\|\\s*\\|\\s*$"
+  ]
+}

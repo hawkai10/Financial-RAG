@@ -39,8 +39,8 @@ from rag_backend import rag_query_enhanced, call_gemini_enhanced
 from config import config
 from utils import logger, validate_and_sanitize_query
 
-# Import pipeline orchestrator
-from pipeline_orchestrator import ensure_data_pipeline_up_to_date
+# Import the new marked pipeline orchestrator
+from marked_pipeline_orchestrator import start_background_monitoring, stop_background_monitoring, is_monitoring_active
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -468,7 +468,17 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'embeddings_loaded': embeddings is not None
+        'embeddings_loaded': embeddings is not None,
+        'document_monitoring_active': is_monitoring_active()
+    })
+
+@app.route('/monitoring-status', methods=['GET'])
+def monitoring_status():
+    """Check document monitoring status"""
+    return jsonify({
+        'monitoring_active': is_monitoring_active(),
+        'message': 'Background document monitoring is active' if is_monitoring_active() 
+                  else 'Background document monitoring is not active'
     })
 
 @app.route('/search', methods=['POST'])
@@ -931,13 +941,14 @@ def search_stream():
 if __name__ == '__main__':
     print("[STARTUP] Starting RAG API Server...")
     
-    # Ensure data pipeline is up-to-date before starting server
-    print("[PIPELINE] Checking data pipeline status...")
-    if ensure_data_pipeline_up_to_date():
-        print("[SUCCESS] Data pipeline is up-to-date")
-    else:
-        print("[ERROR] Failed to update data pipeline. Server may serve stale data.")
-        print("[WARNING] Consider running pipeline manually or check logs for errors.")
+    # Start background monitoring for document changes
+    print("[MONITORING] Starting background document monitoring...")
+    try:
+        start_background_monitoring()
+        print("[SUCCESS] Background monitoring started - will detect document changes automatically")
+    except Exception as e:
+        print(f"[WARNING] Could not start background monitoring: {e}")
+        print("[INFO] Document changes will need to be processed manually")
     
     # Initialize embeddings
     if initialize_embeddings():
@@ -948,10 +959,17 @@ if __name__ == '__main__':
     # Start server
     print("[SERVER] Server starting at http://localhost:5000")
     print("[INFO] UI should connect to: http://localhost:5000/search")
+    print("[INFO] Background monitoring: Document changes will be processed automatically")
     
-    app.run(
-        host='0.0.0.0',
-        port=5000,
-        debug=True,
-        threaded=True
-    )
+    try:
+        app.run(
+            host='0.0.0.0',
+            port=5000,
+            debug=True,
+            threaded=True
+        )
+    finally:
+        # Clean shutdown
+        print("[SHUTDOWN] Stopping background monitoring...")
+        stop_background_monitoring()
+        print("[SHUTDOWN] Server shutdown complete")
