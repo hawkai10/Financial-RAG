@@ -210,9 +210,10 @@ def get_prompt_template():
     # Cache the prompt template string
     if "template" not in PROMPT_CACHE:
         PROMPT_CACHE["template"] = (
-            "<document>\nHere is the document: {WHOLE_DOCUMENT}\n</document>\n\n"
-            "Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Also mention what the pdf is about in short. Answer only with the context and nothing else.\n\n"
-            "<chunk>\n{CHUNK_CONTENT}\n</chunk>"
+            "<document>\n{{WHOLE_DOCUMENT}}\n{WHOLE_DOCUMENT}\n</document>\n\n"
+            "Here is the chunk we want to situate within the whole document\n"
+            "<chunk>\n{{CHUNK_CONTENT}}\n{CHUNK_CONTENT}\n</chunk>\n\n"
+            "Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."
         )
     return PROMPT_CACHE["template"]
 
@@ -232,7 +233,7 @@ def create_cached_context(document_text):
                 "role": "user",
                 "parts": [
                     {
-                        "text": f"<document>\nHere is the document: {document_text}\n</document>\n\nPlease give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Also mention what the pdf is about in short. Answer only with the context and nothing else.\n\n"
+                        "text": f"<document>\n{{{{WHOLE_DOCUMENT}}}}\n{document_text}\n</document>\n\nHere is the chunk we want to situate within the whole document\n<chunk>\n{{{{CHUNK_CONTENT}}}}\n</chunk>\n\nPlease give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."
                     }
                 ]
             }

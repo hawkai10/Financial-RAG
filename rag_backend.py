@@ -833,10 +833,12 @@ async def route_to_mini_agent(query: str, aggregation_type: str, embeddings: Emb
         if mini_agent is None:
             chunk_manager_instance = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
             progressive_retriever = ProgressiveRetriever(embeddings)
-            initialize_mini_agent(chunk_manager_instance, progressive_retriever)
+            mini_agent_instance = initialize_mini_agent(chunk_manager_instance, progressive_retriever)
+        else:
+            mini_agent_instance = mini_agent
         
         # Process with Mini-Agent
-        result = await mini_agent.process_aggregation_query(query, aggregation_type)
+        result = await mini_agent_instance.process_aggregation_query(query, aggregation_type)
         
         # Check if fallback is needed
         if result.get('should_fallback', False):
@@ -868,10 +870,12 @@ async def route_to_full_agent(query: str, complexity_level: str, embeddings: Emb
         if full_agent is None:
             chunk_manager_instance = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
             progressive_retriever = ProgressiveRetriever(embeddings)
-            initialize_full_agent(chunk_manager_instance, progressive_retriever, call_gemini_enhanced)
+            full_agent_instance = initialize_full_agent(chunk_manager_instance, progressive_retriever, call_gemini_enhanced)
+        else:
+            full_agent_instance = full_agent
         
         # Process with Full Agent
-        result = await full_agent.process_complex_query(query, complexity_level)
+        result = await full_agent_instance.process_complex_query(query, complexity_level)
         
         # Check if fallback is needed
         if result.get('should_fallback', False):
