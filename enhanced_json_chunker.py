@@ -16,9 +16,7 @@ import re
 from datetime import datetime
 from content_analyzer import DynamicContentAnalyzer, ContentInsight
 from dynamic_schema_manager import DynamicSchemaManager
-from config import get_config
-
-config = get_config()
+from config import config
 
 @dataclass
 class EnhancedChunk:

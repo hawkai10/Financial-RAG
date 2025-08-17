@@ -15,9 +15,7 @@ from qdrant_client.http import models
 from qdrant_client.http.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 from enhanced_json_chunker import EnhancedChunk
 from content_analyzer import ContentInsight
-from config import get_config
-
-config = get_config()
+from config import config
 
 class AdaptiveQdrantManager:
     """
@@ -157,48 +155,22 @@ class AdaptiveQdrantManager:
     
     def _create_adaptive_metadata(self, chunk: EnhancedChunk) -> Dict[str, Any]:
         """Create adaptive metadata based on chunk content analysis."""
+        # Store both content and snippet for Qdrant payload
+        snippet = chunk.content[:200] + ("..." if len(chunk.content) > 200 else "")
         metadata = {
-            # Basic chunk information
             "chunk_id": chunk.chunk_id,
-            "content": chunk.content,
             "document_id": chunk.document_id,
+            "document_type": chunk.content_insight.document_type,
+            "snippet": snippet,
+            "content": chunk.content,
             "page_number": chunk.page_number,
             "block_type": chunk.block_type,
-            "token_count": chunk.token_count,
-            "confidence_score": chunk.confidence_score,
-            "created_at": chunk.created_at,
-            
-            # Document classification
-            "document_type": chunk.content_insight.document_type,
-            "content_categories": chunk.content_insight.content_categories,
-            "analysis_confidence": chunk.content_insight.confidence_score
+            "entities": chunk.content_insight.entities
         }
-        
-        # Add entity information dynamically
-        for entity_type, entities in chunk.content_insight.entities.items():
-            if entities:
-                # Store entities as arrays for filtering
-                metadata[f"entities_{entity_type.lower()}"] = entities
-                metadata[f"has_{entity_type.lower()}"] = True
-                metadata[f"count_{entity_type.lower()}"] = len(entities)
-        
-        # Add relationship information
-        if chunk.content_insight.relationships:
-            relationship_types = list(set(rel.relationship_type for rel in chunk.content_insight.relationships))
-            metadata["relationship_types"] = relationship_types
-            metadata["has_relationships"] = True
-            metadata["relationship_count"] = len(chunk.content_insight.relationships)
-            
-            # Store relationship details
-            for i, rel in enumerate(chunk.content_insight.relationships[:5]):  # Limit to first 5
-                metadata[f"rel_{i}_type"] = rel.relationship_type
-                metadata[f"rel_{i}_source"] = rel.source
-                metadata[f"rel_{i}_target"] = rel.target
-                metadata[f"rel_{i}_confidence"] = rel.confidence
-        
-        # Add schema elements for future reference
-        metadata["schema_elements"] = chunk.schema_elements
-        
+        # Add dynamic has_{ENTITY_TYPE} booleans for all detected entity types
+        for entity_type in chunk.content_insight.entities:
+            key = f"has_{entity_type.upper()}"
+            metadata[key] = bool(chunk.content_insight.entities.get(entity_type))
         return metadata
     
     def _ensure_collection_exists(self, collection_name: str):
@@ -283,8 +255,8 @@ class AdaptiveQdrantManager:
     def _build_filter_conditions(self, filters: Dict[str, Any]) -> Optional[Filter]:
         """Build Qdrant filter conditions from filter dictionary."""
         try:
+            from qdrant_client.http.models import MatchAny, MatchValue, FieldCondition, Filter
             conditions = []
-            
             for key, value in filters.items():
                 if isinstance(value, str):
                     condition = FieldCondition(
@@ -292,9 +264,10 @@ class AdaptiveQdrantManager:
                         match=MatchValue(value=value)
                     )
                 elif isinstance(value, list):
+                    # Use MatchAny for lists
                     condition = FieldCondition(
                         key=key,
-                        match=MatchValue(value=value[0])  # Use first value for now
+                        match=MatchAny(any=value)
                     )
                 elif isinstance(value, bool):
                     condition = FieldCondition(
@@ -303,14 +276,10 @@ class AdaptiveQdrantManager:
                     )
                 else:
                     continue  # Skip unsupported types
-                
                 conditions.append(condition)
-            
             if conditions:
                 return Filter(must=conditions)
-            
             return None
-        
         except Exception as e:
             self.logger.error(f"Error building filter conditions: {e}")
             return None
@@ -354,23 +323,18 @@ class AdaptiveQdrantManager:
                                limit: int = 100) -> List[Dict[str, Any]]:
         """Filter chunks by document type."""
         filters = {"document_type": document_type}
-        
-        # Use a generic query vector (zeros) since we're filtering, not searching
-        zero_vector = [0.0] * self.embedding_dimension
-        
         try:
             target_collection = collection_name or self.base_collection_name
             filter_conditions = self._build_filter_conditions(filters)
-            
-            results = self.client.search(
+            # Use scroll for filter-only queries (no vector)
+            scroll_result = self.client.scroll(
                 collection_name=target_collection,
-                query_vector=zero_vector,
-                limit=limit,
-                query_filter=filter_conditions
+                scroll_filter=filter_conditions,
+                limit=limit
             )
-            
-            return [{"id": r.id, "score": r.score, "payload": r.payload} for r in results]
-        
+            # scroll returns (points, next_page_offset)
+            points = scroll_result[0] if isinstance(scroll_result, (list, tuple)) else scroll_result
+            return [{"id": p.id, "payload": p.payload} for p in points]
         except Exception as e:
             self.logger.error(f"Error filtering by document type: {e}")
             return []

@@ -12,9 +12,7 @@ from datetime import datetime
 from content_analyzer import ContentInsight, EntityRelationship
 from dynamic_schema_manager import DynamicSchemaManager
 from enhanced_json_chunker import EnhancedChunk
-from config import get_config
-
-config = get_config()
+from config import config
 
 class AdaptiveDgraphManager:
     """
@@ -40,8 +38,35 @@ class AdaptiveDgraphManager:
     def _initialize_base_schema(self):
         """Initialize base schema for the graph."""
         try:
-            # Create base types
-            base_schema = """
+            # Define predicate schema with indexes, reverse, and count
+            predicate_schema = """
+            document_id: string @index(hash) .
+            content: string @index(fulltext) .
+            document_type: string @index(term) .
+            created_at: datetime .
+            updated_at: datetime .
+            chunk_id: string @index(hash) .
+            page_number: int .
+            confidence_score: float .
+            token_count: int .
+            entity_id: string @index(hash) .
+            entity_type: string @index(term) .
+            entity_value: string @index(term) .
+            confidence: float .
+            # Entity relationship edges (add more as needed)
+            has_person: [uid] @reverse @count .
+            has_org: [uid] @reverse @count .
+            has_gpe: [uid] @reverse @count .
+            has_money: [uid] @reverse @count .
+            has_date: [uid] @reverse @count .
+            has_percent: [uid] @reverse @count .
+            # Relationship edges
+            rel_owns: [uid] @reverse @count .
+            rel_manages: [uid] @reverse @count .
+            rel_related_to: [uid] @reverse @count .
+            """
+            # Define types
+            type_schema = """
             type Document {
                 document_id: string
                 content: string
@@ -49,7 +74,6 @@ class AdaptiveDgraphManager:
                 created_at: datetime
                 updated_at: datetime
             }
-            
             type Chunk {
                 chunk_id: string
                 content: string
@@ -59,7 +83,6 @@ class AdaptiveDgraphManager:
                 token_count: int
                 created_at: datetime
             }
-            
             type Entity {
                 entity_id: string
                 entity_type: string
@@ -67,10 +90,10 @@ class AdaptiveDgraphManager:
                 confidence: float
             }
             """
-            
-            self._execute_schema_mutation(base_schema)
-            self.logger.info("Initialized base Dgraph schema")
-        
+            # Apply predicate schema first, then types
+            self._execute_schema_mutation(predicate_schema)
+            self._execute_schema_mutation(type_schema)
+            self.logger.info("Initialized base Dgraph schema with predicates and types")
         except Exception as e:
             self.logger.error(f"Error initializing base schema: {e}")
     
@@ -261,29 +284,33 @@ class AdaptiveDgraphManager:
             try:
                 source_key = self._find_entity_key(relationship.source, entity_uids)
                 target_key = self._find_entity_key(relationship.target, entity_uids)
-                
                 if source_key and target_key and source_key in entity_uids and target_key in entity_uids:
                     source_uid = entity_uids[source_key]
                     target_uid = entity_uids[target_key]
-                    
-                    # Create relationship edge
                     predicate_name = f"rel_{relationship.relationship_type.lower()}"
-                    
-                    mutation = {
-                        "set": [{
-                            "uid": source_uid,
-                            predicate_name: {
-                                "uid": target_uid,
-                                "confidence": relationship.confidence,
-                                "context": relationship.context
-                            }
-                        }]
-                    }
-                    
+                    facets = {"confidence": relationship.confidence, "context": relationship.context}
+                    mutation = self._build_facet_mutation(source_uid, predicate_name, target_uid, facets)
                     self._execute_mutation(mutation)
-            
             except Exception as e:
                 self.logger.error(f"Error creating relationship edge: {e}")
+        """Centralized helper to build a Dgraph mutation with edge facets."""
+        mutation_obj = {
+            "uid": source_uid,
+            predicate_name: {"uid": target_uid}
+        }
+        for facet_key, facet_value in facets.items():
+            mutation_obj[f"{predicate_name}|{facet_key}"] = facet_value
+        return {"set": [mutation_obj]}
+
+        """Ensure no object mixes node fields and edge facets for the same predicate."""
+        for obj in mutation.get("set", []):
+            for key in obj:
+                if "|" in key:
+                    pred, facet = key.split("|", 1)
+                    if pred not in obj or not (isinstance(obj[pred], dict) and "uid" in obj[pred]):
+                        self.logger.error(f"Facet {key} present but base edge {pred} missing or not a uid edge.")
+                        return False
+        return True
     
     def _find_entity_key(self, entity_value: str, entity_uids: Dict[str, str]) -> Optional[str]:
         """Find the key for an entity value in the entity_uids dict."""
@@ -308,46 +335,69 @@ class AdaptiveDgraphManager:
             self.logger.error(f"Error linking document type: {e}")
     
     def query_related_chunks(self, entity_value: str, entity_type: str = None) -> List[Dict]:
-        """Query chunks related to a specific entity using proper reverse edge syntax."""
+        """Query chunks related to a specific entity using robust reverse edge logic."""
         try:
-            # First find the entity UID, then use reverse edge to find chunks
-            if entity_type:
-                entity_filter = f'@filter(eq(entity_type, "{entity_type}"))'
+            # Known has_* predicates (update as needed for your schema)
+            has_predicates = [
+                'has_person', 'has_org', 'has_gpe', 'has_money', 'has_date', 'has_percent'
+            ]
+            if entity_type and f"has_{entity_type.lower()}" in has_predicates:
+                # Use specific predicate if valid
                 predicate_name = f"has_{entity_type.lower()}"
-            else:
-                entity_filter = ""
-                # If no entity_type specified, we need to check all possible predicates
-                predicate_name = "has_entity"  # fallback
-            
-            query = f"""
-            {{
-                entity(func: eq(entity_value, "{entity_value}")) {entity_filter} {{
-                    uid
-                    entity_value
-                    entity_type
-                    ~{predicate_name} {{
+                entity_filter = f'@filter(eq(entity_type, "{entity_type}"))'
+                query = f"""
+                {{
+                    entity(func: eq(entity_value, "{entity_value}")) {entity_filter} {{
                         uid
-                        chunk_id
-                        content
-                        confidence_score
-                        document_id
-                        page_number
+                        entity_value
+                        entity_type
+                        ~{predicate_name} {{
+                            uid
+                            chunk_id
+                            content
+                            confidence_score
+                            document_id
+                            page_number
+                        }}
                     }}
                 }}
-            }}
-            """
-            
-            response = self._execute_query(query)
-            if response and 'data' in response and 'entity' in response['data']:
-                entities = response['data']['entity']
-                chunks = []
-                for entity in entities:
-                    if f"~{predicate_name}" in entity:
-                        chunks.extend(entity[f"~{predicate_name}"])
-                return chunks
-            
-            return []
-        
+                """
+                response = self._execute_query(query)
+                if response and 'data' in response and 'entity' in response['data']:
+                    entities = response['data']['entity']
+                    chunks = []
+                    for entity in entities:
+                        if f"~{predicate_name}" in entity:
+                            chunks.extend(entity[f"~{predicate_name}"])
+                    return chunks
+                return []
+            else:
+                # No or unknown entity_type: query all has_* edges for the found entity UID(s)
+                # Build a query that unions all ~has_* edges
+                edge_blocks = '\n'.join([
+                    f"~{pred} {{\n    uid\n    chunk_id\n    content\n    confidence_score\n    document_id\n    page_number\n}}" for pred in has_predicates
+                ])
+                query = f"""
+                {{
+                    entity(func: eq(entity_value, "{entity_value}")) {{
+                        uid
+                        entity_value
+                        entity_type
+                        {edge_blocks}
+                    }}
+                }}
+                """
+                response = self._execute_query(query)
+                if response and 'data' in response and 'entity' in response['data']:
+                    entities = response['data']['entity']
+                    chunks = []
+                    for entity in entities:
+                        for pred in has_predicates:
+                            edge = f"~{pred}"
+                            if edge in entity:
+                                chunks.extend(entity[edge])
+                    return chunks
+                return []
         except Exception as e:
             self.logger.error(f"Error querying related chunks: {e}")
             return []
@@ -597,13 +647,11 @@ class AdaptiveDgraphManager:
         """Execute schema mutation on Dgraph."""
         try:
             response = requests.post(
-                f"{self.dgraph_url}/admin/schema",
+                f"{self.dgraph_url}/alter",
                 data=schema,
                 headers={'Content-Type': 'text/plain'}
             )
-            
             return response.status_code == 200
-        
         except Exception as e:
             self.logger.error(f"Error executing schema mutation: {e}")
             return False

@@ -10,9 +10,7 @@ import json
 import requests
 from datetime import datetime
 from content_analyzer import ContentInsight, EntityRelationship
-from config import get_config
-
-config = get_config()
+from config import config
 
 @dataclass
 class SchemaUpdate:
@@ -87,50 +85,60 @@ class DynamicSchemaManager:
             List of schema updates that were applied
         """
         updates = []
-        
+        # --- Add dedicated Entity node schema if not present ---
+        # Ensure entity_type and entity_value predicates are indexed for fast lookup
+        for pred, tokenizer in [("entity_type", ["hash", "term"]), ("entity_value", ["hash", "term"])]:
+            if pred not in self.current_schema:
+                updates.append(SchemaUpdate(
+                    operation='add_predicate',
+                    element_type='node',
+                    name=pred,
+                    properties={
+                        'type': 'string',
+                        'index': True,
+                        'tokenizer': tokenizer
+                    },
+                    timestamp=datetime.now()
+                ))
+        # --- End Entity node schema ---
         for insight in insights:
             # Analyze entities and create predicates
             entity_updates = self._analyze_entities_for_schema(insight.entities)
             updates.extend(entity_updates)
-            
+
             # Analyze relationships and create edge predicates
             relationship_updates = self._analyze_relationships_for_schema(insight.relationships)
             updates.extend(relationship_updates)
-            
-            # Create document type predicates
+
+            # Create document type predicates (with strong indexing)
             doc_type_updates = self._analyze_document_type_for_schema(insight.document_type)
             updates.extend(doc_type_updates)
-        
+
         # Apply updates to Dgraph
         applied_updates = self._apply_schema_updates(updates)
-        
         return applied_updates
     
     def _analyze_entities_for_schema(self, entities: Dict[str, List[str]]) -> List[SchemaUpdate]:
         """Analyze entities and determine required schema updates."""
         updates = []
-        
         for entity_type, entity_list in entities.items():
             if not entity_list:
                 continue
-                
-            # Create predicate for this entity type
+            # Create predicate for this entity type (edge)
             predicate_name = f"has_{entity_type.lower()}"
-            
             if predicate_name not in self.current_schema:
                 update = SchemaUpdate(
                     operation='add_predicate',
-                    element_type='edge',  # Changed from 'node' to 'edge'
+                    element_type='edge',
                     name=predicate_name,
                     properties={
-                        'type': '[uid]',     # Changed from '[string]' to '[uid]' for proper edges
-                        'reverse': True,     # Enable reverse edge queries (~has_company)
-                        'count': True        # Enable count operations for analytics
+                        'type': '[uid]',
+                        'reverse': True,
+                        'count': True
                     },
                     timestamp=datetime.now()
                 )
                 updates.append(update)
-        
         return updates
     
     def _analyze_relationships_for_schema(self, relationships: List[EntityRelationship]) -> List[SchemaUpdate]:
@@ -164,10 +172,8 @@ class DynamicSchemaManager:
     def _analyze_document_type_for_schema(self, document_type: str) -> List[SchemaUpdate]:
         """Analyze document type and create corresponding schema elements."""
         updates = []
-        
         # Create type predicate for document classification
         type_predicate = f"document_type"
-        
         if type_predicate not in self.current_schema:
             update = SchemaUpdate(
                 operation='add_predicate',
@@ -176,12 +182,11 @@ class DynamicSchemaManager:
                 properties={
                     'type': 'string',
                     'index': True,
-                    'tokenizer': ['exact']
+                    'tokenizer': ['exact', 'hash', 'term']
                 },
                 timestamp=datetime.now()
             )
             updates.append(update)
-        
         return updates
     
     def _apply_schema_updates(self, updates: List[SchemaUpdate]) -> List[SchemaUpdate]:

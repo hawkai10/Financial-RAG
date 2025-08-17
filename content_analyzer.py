@@ -9,9 +9,7 @@ from typing import Dict, List, Any, Tuple, Set
 from collections import defaultdict
 import re
 from dataclasses import dataclass
-from config import get_config
-
-config = get_config()
+from config import config
 
 @dataclass
 class EntityRelationship:

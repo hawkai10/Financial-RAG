@@ -115,56 +115,36 @@ class MLSystemSetup:
                 logger.error(f"❌ Both spaCy installation methods failed: {e2}")
                 raise
     
-    def setup_dgraph(self):
-        """Setup Dgraph database."""
-        logger.info("Checking Dgraph setup...")
-        
-        try:
-            # Check if Dgraph is running
-            response = requests.get("http://localhost:8080/health", timeout=5)
-            
-            if response.status_code == 200:
-                logger.info("✅ Dgraph is running")
-                self.setup_status['dgraph'] = True
-            else:
-                self.install_dgraph()
-                
-        except requests.RequestException:
-            self.install_dgraph()
-    
-    def install_dgraph(self):
-        """Install and start Dgraph."""
-        logger.info("Installing Dgraph...")
-        
-        # Provide installation instructions
-        dgraph_instructions = """
-        Dgraph needs to be installed separately. Please follow these steps:
-        
+    def install_qdrant(self):
+        """Install and start Qdrant (polling, no input)."""
+        logger.info("Installing Qdrant...")
+        qdrant_instructions = """
+        Qdrant needs to be installed separately. Please follow these steps:
         1. Docker installation (Recommended):
-           docker run -it -p 8080:8080 -p 9080:9080 -p 8000:8000 -v ~/dgraph:/dgraph dgraph/dgraph:latest dgraph zero
-           docker run -it -p 8080:8080 -p 9080:9080 -v ~/dgraph:/dgraph dgraph/dgraph:latest dgraph alpha --my=localhost:7080 --zero=localhost:5080
-        
-        2. Or download binary from: https://dgraph.io/downloads
-        
-        3. After installation, verify it's running at http://localhost:8080
+           docker run -p 6333:6333 qdrant/qdrant
+        2. Or download binary from: https://qdrant.tech/documentation/quick-start/
+        3. After installation, verify it's running at http://localhost:6333
         """
-        
-        logger.info(dgraph_instructions)
-        
-        # Wait for user to setup Dgraph
-        input("Press Enter after Dgraph is running at http://localhost:8080...")
-        
-        # Verify again
-        try:
-            response = requests.get("http://localhost:8080/health", timeout=5)
-            if response.status_code == 200:
-                self.setup_status['dgraph'] = True
-                logger.info("✅ Dgraph is now running")
-            else:
-                raise Exception("Dgraph health check failed")
-        except Exception as e:
-            logger.error(f"❌ Dgraph is not responding: {e}")
-            raise
+        logger.info(qdrant_instructions)
+        # Poll for Qdrant health with timeout
+        max_wait = 120  # seconds
+        poll_interval = 3
+        waited = 0
+        logger.info("Waiting for Qdrant to become available at http://localhost:6333/collections ...")
+        while waited < max_wait:
+            try:
+                response = requests.get("http://localhost:6333/collections", timeout=5)
+                if response.status_code == 200:
+                    self.setup_status['qdrant'] = True
+                    logger.info("✅ Qdrant is now running")
+                    break
+            except Exception:
+                pass
+            time.sleep(poll_interval)
+            waited += poll_interval
+        else:
+            logger.error(f"❌ Qdrant did not become available after {max_wait} seconds. Please check your Qdrant setup and try again.")
+            raise RuntimeError("Qdrant startup timed out.")
     
     def setup_qdrant(self):
         """Setup Qdrant vector database."""

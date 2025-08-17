@@ -20,9 +20,7 @@ from dynamic_schema_manager import DynamicSchemaManager
 
 # Import existing components we still need
 from unified_query_processor import UnifiedQueryProcessor
-from config import get_config
-
-config = get_config()
+from config import config
 
 class MLBasedRAGBackend:
     """

@@ -1,54 +1,52 @@
-# GitHub Copilot Instructions
+# Copilot Instructions for Financial-RAG
 
-This document provides essential guidance for AI agents working on the Financial-RAG codebase.
+## Project Overview
+- **Purpose:** Enterprise-grade Retrieval-Augmented Generation (RAG) for financial documents, with hierarchical map-reduce, advanced chunking, and robust graph/vector search.
+- **Core Components:**
+  - `rag_app.py`, `api_server.py`: Main API entrypoints (Flask-based)
+  - `adaptive_dgraph_manager.py`: Dgraph (graph DB) manager, handles schema, entities, relationships, and facets
+  - `adaptive_qdrant_manager.py`: Qdrant (vector DB) manager, handles vector storage, filtering, and search
+  - `enhanced_json_chunker.py`: Chunking and embedding pipeline, produces EnhancedChunk objects
+  - `dynamic_schema_manager.py`: Dynamically evolves Dgraph schema based on content analysis
+  - `full_agent.py`, `mini_agent.py`: Orchestration/agent logic for query processing
+  - `amber-ai-search/`: React+TS frontend for search and QA
 
-## 🏛️ Architecture Overview
+## Data Flow & Architecture
+- **Pipeline:**
+  1. Documents are chunked (`enhanced_json_chunker.py`), producing EnhancedChunk objects with precomputed embeddings and ML metadata.
+  2. Chunks are stored in Dgraph (entities/relationships) and Qdrant (vectors, slim metadata only).
+  3. Queries are routed through hierarchical processors, which batch, parallelize, and aggregate results.
+  4. Results are reranked, deduplicated, and streamed to the user.
+- **Dgraph:**
+  - Schema is evolved dynamically; entity edges use `[uid] @reverse @count`, entity_type/entity_value/document_type are always indexed.
+  - Facets are encoded via a centralized helper; mutations are validated for facet safety.
+  - Reverse queries are robust: if entity_type is missing, all `~has_*` edges are traversed.
+- **Qdrant:**
+  - Only slim metadata (IDs, doc type, snippet) is stored in payload; full text is in Dgraph.
+  - Filtering uses MatchAny for lists; filter-only queries use scroll, not zero vector search.
 
-The system is a sophisticated Retrieval-Augmented Generation (RAG) pipeline designed for financial document analysis. Understanding the data flow and component responsibilities is crucial.
+## Developer Workflows
+- **Setup:** Use `setup_ml_system.py` for end-to-end setup. It polls for Dgraph/Qdrant health (no input()), suitable for CI/containers.
+- **Testing:** Run `test_ml_system.py` for integration tests.
+- **Schema Evolution:** All schema changes are managed via `dynamic_schema_manager.py` and are applied automatically.
+- **Chunking/Embedding:** All chunking and embedding logic is in `enhanced_json_chunker.py`.
 
-1.  **Orchestration**: `rag_backend.py` is the central orchestrator. It manages the end-to-end process from query intake to final answer synthesis.
-2.  **Query Understanding**: `unified_query_processor.py` is the first step. It analyzes the user's query to determine the `strategy` ("Standard", "Analyse", or "Aggregation"). This strategy dictates how other components behave.
-3.  **Chunk Management**: The `chunk_manager.py` provides an efficient, memory-mapped interface to the `contextualized_chunks.json` data. It uses an index (`chunks.index.json`) for lazy loading, which is a critical performance optimization. **Do not read `contextualized_chunks.json` directly; use the `ChunkManager`**.
-4.  **Retrieval**: `progressive_retrieval.py` implements a smart, two-stage retrieval process. It fetches a small set of chunks, assesses their quality, and decides whether to fetch more. This is more efficient than traditional fixed-`top_k` retrieval.
-5.  **Reranking**: `document_reranker.py` takes the retrieved chunks and uses a `cross-encoder/ms-marco-MiniLM-L-12-v2` model to calculate a precise relevance score. This is a key step for ensuring high-quality context for the LLM.
-6.  **Answer Synthesis**: `rag_backend.py` uses the reranked chunks to build a prompt for the Gemini API and generate the final answer.
+## Project Conventions
+- **No keyword-based logic:** All retrieval and processing is ML/embedding-based.
+- **All entity/relationship edges in Dgraph use `[uid]` with `@reverse @count`.
+- **Facets:** Use the `_build_facet_mutation` helper for all edge facets; never mix node fields and edge facets in the same object.
+- **Qdrant payloads:** Only store minimal metadata; do not store full content.
+- **Hierarchical processing:** Use batch/parallel/aggregation patterns for large queries.
 
-## 🧑‍💻 Developer Workflows
+## Integration Points
+- **Dgraph:** Runs at `http://localhost:8080` (default)
+- **Qdrant:** Runs at `http://localhost:6333` (default)
+- **Frontend:** `amber-ai-search/` (React+Vite)
 
--   **Initial Setup**: Before running any code, you **must** initialize the chunks database. This is a critical first step.
-    ```bash
-    python init_chunks_db.py
-    ```
--   **Testing the Full Pipeline**: To test end-to-end functionality, use the `test_new_system.py` script.
-    ```bash
-    python test_new_system.py
-    ```
--   **Cache Management**: The system uses multiple layers of caching. If you are not seeing changes reflected, clear the caches.
-    ```bash
-    python simple_clear_cache.py
-    ```
--   **Debugging**: For targeted debugging, use `debug_retrieval.py` to inspect the retrieval and reranking process for a given query.
+## Examples
+- See `test_ml_system.py` for end-to-end usage and integration patterns.
+- See `dynamic_schema_manager.py` for schema evolution logic and conventions.
+- See `adaptive_dgraph_manager.py` for robust graph queries and facet-safe mutations.
 
-## 🧩 Project Conventions & Patterns
-
--   **Strategy-Aware Logic**: When modifying the pipeline, always consider the `strategy` variable. The system's behavior (e.g., number of chunks to retrieve, reranking logic, prompting) changes based on whether the strategy is "Standard", "Analyse", or "Aggregation". For example, reranking is skipped for the "Aggregation" strategy to preserve all initial results.
-    ```python
-    # In document_reranker.py
-    if strategy == "Aggregation":
-        logger.info("Skipping reranking for aggregation query...")
-        return chunks[:top_k], rerank_info
-    ```
--   **Scoring is Multi-Stage**: A chunk's relevance is determined by a `final_rerank_score`. This is a weighted average of the initial `retrieval_score` and the much more important `cross_encoder_score`. When working with chunk relevance, always refer to `final_rerank_score`.
-    ```python
-    # In document_reranker.py
-    chunk["final_rerank_score"] = float((normalized_scores[i] * 0.8) + (retrieval_score * 0.2))
-    ```
--   **Configuration**: All key parameters (file paths, model names, thresholds) are centralized in `config.py`. Do not hard-code these values elsewhere.
--   **Efficient Chunk Access**: When you need to get the content of a chunk, do not read the main JSON file. Use the `ChunkManager` or the `get_chunk_by_id_enhanced` function in `rag_backend.py`, which uses multiple layers of caching and the memory-mapped `ChunkManager`.
-
-## 🔗 External Dependencies & Integrations
-
--   **Primary Data Source**: `contextualized_chunks.json`.
--   **Databases**: `chunks.db` (for chunk content) and `feedback.db` (for user feedback and performance metrics). Both are SQLite.
--   **LLM**: The system uses the Gemini API for query processing and answer generation. API calls are centralized in `call_gemini_enhanced` within `rag_backend.py`.
--   **Key Python Libraries**: `txtai` (for embeddings), `sentence-transformers` (for the cross-encoder), and `numpy` (for scoring calculations).
+---
+For new AI agents: Always check for dynamic schema, use the provided helpers for facets and mutations, and follow the minimal-payload pattern for Qdrant.
