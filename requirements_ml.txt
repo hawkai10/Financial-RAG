@@ -1,0 +1,75 @@
+"""
+Updated requirements.txt for ML-based RAG system
+Dependencies for the keyword-free, ML-based architecture with Dgraph + Qdrant
+"""
+
+# Existing dependencies
+python-dotenv==1.0.0
+tiktoken==0.5.2
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
+sentence-transformers==2.2.2
+transformers==4.35.2
+torch==2.1.1
+BeautifulSoup4==4.12.2
+requests==2.31.0
+
+# New ML-based components
+spacy==3.7.2
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+
+# Graph database (Dgraph)
+pydgraph==21.3.2
+grpcio==1.59.0
+
+# Vector database (Qdrant)
+qdrant-client==1.7.0
+grpcio-tools==1.59.0
+
+# Enhanced data processing
+lxml==4.9.3
+html5lib==1.1
+bleach==6.1.0
+
+# Performance optimization
+asyncio==3.4.3
+concurrent-futures==3.1.1
+aiohttp==3.9.1
+uvloop==0.19.0
+
+# Monitoring and logging
+psutil==5.9.6
+structlog==23.2.0
+
+# API and web framework
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+
+# Development and testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+flake8==6.1.0
+
+# Database utilities
+sqlalchemy==2.0.23
+alembic==1.13.1
+
+# Additional ML utilities
+networkx==3.2.1  # For graph analysis
+plotly==5.17.0    # For visualization
+dash==2.14.2      # For dashboards
+
+# Configuration management
+pyyaml==6.0.1
+toml==0.10.2
+
+# Security
+cryptography==41.0.8
+bcrypt==4.1.2
+
+# Caching
+redis==5.0.1
+diskcache==5.6.3
