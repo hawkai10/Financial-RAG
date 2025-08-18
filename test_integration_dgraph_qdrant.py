@@ -10,6 +10,7 @@ import requests
 from adaptive_dgraph_manager import AdaptiveDgraphManager
 from adaptive_qdrant_manager import AdaptiveQdrantManager
 from dynamic_schema_manager import DynamicSchemaManager
+import pytest
 
 
 def test_dgraph():
@@ -120,6 +121,7 @@ def test_qdrant():
         sys.exit(1)
 
 def main():
+    pytest.skip("Legacy Dgraph/Qdrant integration tests are deprecated.", allow_module_level=True)
     test_dgraph()
     test_qdrant()
     print("\nAll integration tests completed.")

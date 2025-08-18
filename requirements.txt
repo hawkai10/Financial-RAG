@@ -58,6 +58,7 @@ cffi
 chardet
 charset-normalizer
 chromadb
+chromadb>=0.5.4
 click
 colorama
 coloredlogs
@@ -164,6 +165,7 @@ pandas
 pdfminer.six
 pdfplumber
 pgvector
+psycopg[binary]
 pillow
 pip
 plotly

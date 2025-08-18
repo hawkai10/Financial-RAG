@@ -39,8 +39,32 @@ from rag_backend import rag_query_enhanced, call_gemini_enhanced
 from config import config
 from utils import logger, validate_and_sanitize_query
 
-# Import the new marked pipeline orchestrator
-from marked_pipeline_orchestrator import start_background_monitoring, stop_background_monitoring, is_monitoring_active
+# Import the new marked pipeline orchestrator (optional)
+def start_background_monitoring(*args, **kwargs):
+    return False
+
+def stop_background_monitoring(*args, **kwargs):
+    return False
+
+def is_monitoring_active() -> bool:
+    return False
+
+try:
+    import importlib
+    _mpo = importlib.import_module('marked_pipeline_orchestrator')
+    start_background_monitoring = getattr(_mpo, 'start_background_monitoring', start_background_monitoring)
+    stop_background_monitoring = getattr(_mpo, 'stop_background_monitoring', stop_background_monitoring)
+    is_monitoring_active = getattr(_mpo, 'is_monitoring_active', is_monitoring_active)
+except Exception:
+    pass
+
+# Parent-child pipeline toggle and adapter
+PARENT_CHILD_ONLY = os.getenv('PARENT_CHILD_ONLY', 'true').lower() in ('1','true','yes')
+if PARENT_CHILD_ONLY:
+    try:
+        from parent_child.api_adapter import pc_search  # async function
+    except Exception as _e:
+        pc_search = None
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
@@ -498,11 +522,42 @@ def search():
         if not sanitized_query:
             return jsonify({'error': 'Invalid query'}), 400
         
-        # Check if embeddings are loaded
-        if embeddings is None:
-            return jsonify({'error': 'Embeddings not loaded'}), 500
+        # In parent-child mode we don't require txtai embeddings
+        if not PARENT_CHILD_ONLY:
+            # Check if embeddings are loaded
+            if embeddings is None:
+                return jsonify({'error': 'Embeddings not loaded'}), 500
         
         logger.info(f"[SEARCH] UI Search request: {sanitized_query}")
+
+        # Parent-child only mode: bypass classic RAG
+        if PARENT_CHILD_ONLY:
+            if pc_search is None:
+                return jsonify({'error': 'Parent-child pipeline not available'}), 500
+            try:
+                import concurrent.futures, asyncio
+                def run_async_pc():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        return loop.run_until_complete(pc_search(sanitized_query))
+                    finally:
+                        loop.close()
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    result = executor.submit(run_async_pc).result(timeout=30)
+            except Exception as e:
+                logger.error(f"[ERROR] Parent-child search failed: {e}")
+                return jsonify({'error': f'Parent-child search failed: {str(e)}'}), 500
+
+            documents = result.get('documents', [])
+            ai_response = {'summary': result.get('answer', ''), 'items': []}
+            return jsonify({
+                'documents': documents,
+                'aiResponse': ai_response,
+                'query': sanitized_query,
+                'status': 'success',
+                'method': 'parent_child'
+            })
         
         # Try the full RAG pipeline first (main method)
         try:
@@ -780,14 +835,42 @@ def search_stream():
                 yield f"data: {json.dumps({'error': 'Invalid query'})}\n\n"
                 return
             
-            # Check if embeddings are loaded
-            if embeddings is None:
-                yield f"data: {json.dumps({'error': 'Embeddings not loaded'})}\n\n"
-                return
+            # In parent-child mode we don't require txtai embeddings
+            if not PARENT_CHILD_ONLY:
+                if embeddings is None:
+                    yield f"data: {json.dumps({'error': 'Embeddings not loaded'})}\n\n"
+                    return
             
             logger.info(f"[STREAM] Starting streaming search for: {sanitized_query}")
             
-            # Try the full RAG pipeline
+            # Parent-child streaming path
+            if PARENT_CHILD_ONLY:
+                try:
+                    import concurrent.futures
+                    def run_async_pc():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        try:
+                            from parent_child.api_adapter import pc_search
+                            return loop.run_until_complete(pc_search(sanitized_query))
+                        finally:
+                            loop.close()
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        result = executor.submit(run_async_pc).result(timeout=30)
+                    documents = result.get('documents', [])
+                    answer = result.get('answer', '')
+                    yield f"data: {json.dumps({'type': 'chunks', 'data': {'documents': documents}})}\n\n"
+                    time.sleep(0.3)
+                    ai_response = {'summary': answer, 'items': []}
+                    yield f"data: {json.dumps({'type': 'answer', 'data': {'aiResponse': ai_response}})}\n\n"
+                    yield f"data: {json.dumps({'type': 'complete', 'data': {'status': 'success', 'method': 'parent_child'}})}\n\n"
+                    return
+                except Exception as e:
+                    logger.error(f"[STREAM] Parent-child stream failed: {e}")
+                    yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(e)}})}\n\n"
+                    return
+
+            # Try the full RAG pipeline (classic)
             try:
                 logger.info("[STREAM] Getting chunks first...")
                 
