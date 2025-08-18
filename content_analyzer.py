@@ -43,8 +43,16 @@ class DynamicContentAnalyzer:
             self.nlp = spacy.load("en_core_web_sm")
             self.logger.info("Loaded spaCy en_core_web_sm model")
         except IOError:
-            self.logger.warning("en_core_web_sm not found, using blank model")
+            self.logger.warning("en_core_web_sm not found, using blank model with sentencizer; some features will be limited")
             self.nlp = spacy.blank("en")
+            # Ensure we can split sentences without full parser
+            if "sentencizer" not in self.nlp.pipe_names:
+                self.nlp.add_pipe("sentencizer")
+
+        # Capability flags
+        self.has_ner = "ner" in self.nlp.pipe_names
+        self.has_parser = "parser" in self.nlp.pipe_names
+        self.has_tagger = "tagger" in self.nlp.pipe_names
         
         # Custom entity types we want to detect
         self.entity_types = {
@@ -96,12 +104,21 @@ class DynamicContentAnalyzer:
         """Extract entities using spaCy NER."""
         entities = defaultdict(list)
         
-        for ent in doc.ents:
-            if ent.label_ in self.entity_types:
-                # Clean and normalize entity text
-                entity_text = self._clean_entity_text(ent.text)
-                if entity_text and entity_text not in entities[ent.label_]:
-                    entities[ent.label_].append(entity_text)
+        # Named entities if available
+        if self.has_ner:
+            for ent in doc.ents:
+                if ent.label_ in self.entity_types:
+                    # Clean and normalize entity text
+                    entity_text = self._clean_entity_text(ent.text)
+                    if entity_text and entity_text not in entities[ent.label_]:
+                        entities[ent.label_].append(entity_text)
+        else:
+            # Minimal regex-based MONEY fallback to avoid empty results
+            money_matches = re.findall(r"\$\s?\d+[\d,]*(?:\.\d+)?|\d+[\d,]*\s?(?:USD|usd|dollars)", doc.text)
+            money_clean = [self._clean_entity_text(m) for m in money_matches]
+            money_clean = [m for m in money_clean if m]
+            if money_clean:
+                entities["MONEY"].extend(list(dict.fromkeys(money_clean)))
         
         # Also extract noun phrases as potential entities
         noun_phrases = self._extract_noun_phrases(doc)
@@ -111,26 +128,42 @@ class DynamicContentAnalyzer:
     
     def _extract_noun_phrases(self, doc) -> List[str]:
         """Extract meaningful noun phrases."""
-        noun_phrases = []
-        
-        for chunk in doc.noun_chunks:
-            # Filter out very short or common phrases
-            if len(chunk.text.split()) >= 2 and not self._is_common_phrase(chunk.text):
-                cleaned = self._clean_entity_text(chunk.text)
+        noun_phrases: List[str] = []
+
+        if self.has_parser:
+            try:
+                for chunk in doc.noun_chunks:
+                    # Filter out very short or common phrases
+                    if len(chunk.text.split()) >= 2 and not self._is_common_phrase(chunk.text):
+                        cleaned = self._clean_entity_text(chunk.text)
+                        if cleaned and cleaned not in noun_phrases:
+                            noun_phrases.append(cleaned)
+                return noun_phrases[:10]
+            except Exception:
+                # Fall through to heuristic if noun_chunks fails
+                pass
+
+        # Heuristic fallback without parser/tagger: capture multiword capitalized phrases
+        text = doc.text
+        candidates = re.findall(r"\b(?:[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)+)\b", text)
+        for cand in candidates:
+            if not self._is_common_phrase(cand):
+                cleaned = self._clean_entity_text(cand)
                 if cleaned and cleaned not in noun_phrases:
                     noun_phrases.append(cleaned)
-        
-        return noun_phrases[:10]  # Limit to most relevant
+        return noun_phrases[:10]
     
     def _extract_relationships(self, doc, entities: Dict[str, List[str]]) -> List[EntityRelationship]:
         """Extract relationships between entities using dependency parsing."""
-        relationships = []
-        
+        # Without a parser, we cannot reliably extract relationships
+        if not self.has_parser:
+            return []
+
+        relationships: List[EntityRelationship] = []
         # Look for patterns in dependency tree
         for sent in doc.sents:
             sent_relationships = self._analyze_sentence_relationships(sent, entities)
             relationships.extend(sent_relationships)
-        
         return relationships
     
     def _analyze_sentence_relationships(self, sent, entities: Dict[str, List[str]]) -> List[EntityRelationship]:
@@ -261,10 +294,14 @@ class DynamicContentAnalyzer:
         
         if domain == 'financial':
             # Look for financial semantic patterns
-            financial_tokens = [token for token in doc if token.pos_ == 'NOUN' and 
-                              any(sim_token in token.text.lower() for sim_token in 
-                                  ['revenue', 'profit', 'loss', 'asset', 'liability', 'equity'])]
-            return len(financial_tokens) > 0
+            if self.has_tagger:
+                financial_tokens = [token for token in doc if token.pos_ == 'NOUN' and 
+                                  any(sim_token in token.text.lower() for sim_token in 
+                                      ['revenue', 'profit', 'loss', 'asset', 'liability', 'equity'])]
+                return len(financial_tokens) > 0
+            else:
+                # Fallback: lightweight surface check without tagging
+                return any(word in doc.text.lower() for word in ['revenue', 'profit', 'loss', 'asset', 'liability', 'equity'])
         
         return False
     
