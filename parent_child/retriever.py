@@ -33,7 +33,13 @@ class ParentContextRetriever:
         return {
             "child_hits": child_hits,
             "parent_contexts": [
-                {"parent_id": p.parent_id, "document_id": p.document_id, "content": p.content}
+                {
+                    "parent_id": p.parent_id,
+                    "document_id": p.document_id,
+                    "page_start": p.page_start,
+                    "page_end": p.page_end,
+                    "content": p.content,
+                }
                 for p in parents
             ],
         }

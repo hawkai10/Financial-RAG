@@ -1,4 +1,5 @@
 import re
+import html as htmlmod
 from dataclasses import dataclass
 from typing import List, Optional
 from sentence_transformers import SentenceTransformer
@@ -27,12 +28,28 @@ class ParentChildChunker:
     Embeddings are generated only for child chunks.
     """
 
-    def __init__(self, parent_max_tokens: int = 1200, child_max_tokens: int = 300, child_overlap: int = 40):
+    def __init__(self, parent_max_tokens: int = 1500, child_max_tokens: int = 400, child_overlap: int = 40):
         self.parent_max_tokens = parent_max_tokens
         self.child_max_tokens = child_max_tokens
         self.child_overlap = child_overlap
         self.id_gen = SnowflakeGenerator(worker_id=1)
         self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
+    def _normalize_text(self, text: str) -> str:
+        # If HTML-like, strip tags and unescape entities; collapse whitespace
+        if '<' in text and '>' in text:
+            # basic breaks to spaces
+            t = re.sub(r'<\s*br\s*/?>', '\n', text, flags=re.IGNORECASE)
+            # add line breaks for some block tags
+            t = re.sub(r'</\s*(p|div|tr|table|h\d)\s*>', '\n', t, flags=re.IGNORECASE)
+            t = re.sub(r'<[^>]+>', ' ', t)
+            t = htmlmod.unescape(t)
+        else:
+            t = text
+        # collapse whitespace
+        t = re.sub(r'[ \t\r\f]+', ' ', t)
+        t = re.sub(r'\n\s*\n+', '\n', t)
+        return t.strip()
 
     def _token_len(self, text: str) -> int:
         # heuristic token length ~ word count * 1.3
@@ -46,7 +63,8 @@ class ParentChildChunker:
         page_end = None
         acc_tokens = 0
         for b in blocks:
-            text = b.get('content') or b.get('html') or ''
+            raw = b.get('content') or b.get('html') or ''
+            text = self._normalize_text(raw)
             if not text:
                 continue
             page = int(b.get('page', 0))

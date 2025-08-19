@@ -7,7 +7,7 @@
       "block_counts": [
         [
           "TableCell",
-          451
+          124
         ],
         [
           "Line",
@@ -29,12 +29,12 @@
       "block_metadata": {
         "llm_request_count": 1,
         "llm_error_count": 0,
-        "llm_tokens_used": 7032,
+        "llm_tokens_used": 4544,
         "previous_text": "",
         "previous_type": "",
         "previous_order": 0
       }
     }
   ],
-  "debug_data_path": "debug_data\\cn 21-22"
+  "debug_data_path": "debug_data\\cn21.22"
 }

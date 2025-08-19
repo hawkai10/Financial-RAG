@@ -1,0 +1,26 @@
+{
+  "document_id": "cn21.22",
+  "source_json": "..\\New folder\\cn21.22\\cn21.22.json",
+  "parents_count": 1,
+  "children_count": 1,
+  "parents_total_tokens": 284,
+  "children_total_tokens": 284,
+  "parents": [
+    {
+      "parent_id": 216095932670808064,
+      "document_id": "cn21.22",
+      "page_start": 133,
+      "page_end": 133,
+      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) \n Credit Note No. \n Dated \n Chakulia , PO-Chakulia \n 21 \n 1-Mar-22 \n Dist East Singh Bhum \n Mode/Terms of Payment \n GSTNO-20AAIPL4886F1ZQ \n Original Invoice No. & Date. \n Other References \n GSTIN/UIN: 20AAIPL4886F1ZQ \n State Name : Jharkhand, Code : 20 \n Buyer's Order No. \n Dated \n Consignee (Ship to) \n Nalinaksha Agro Pvt Ltd \n Dispatch Doc No. \n Bajekumarpur, Dist - Burdwan, GST- 19AADCN2118E1ZS \n GSTIN/UIN : 19AADCN2118E1ZS \n Dispatched through \n Destination \n State Name : West Bengal, Code : 19 \n Buyer (Bill to) \n Terms of Delivery \n Nalinaksha Agro Pvt Ltd \n Bajekumarpur, Dist - Burdwan, GST- 19AADCN2118E1ZS \n GSTIN/UIN : 19AADCN2118E1ZS \n State Name : West Bengal, Code : 19 \n Place of Supply : West Bengal \n SI No. \n Description of Goods \n HSN/SAC \n GST Rate \n Quantity \n Rate \n per \n Amount \n 1 \n Bran \n 23022020 \n 5 % \n 1,54,672.00 \n I.G.S.T. \n Round Off \n 7,733.60\n0.40\n Total \n ₹ 1,62,406.00 \n E. & O.E \n Amount Chargeable (in words) : Indian Rupees One Lakh Sixty Two Thousand Four Hundred Six Only\n HSN/SAC \n Taxable Value \n Rate \n IGST Amount \n Total Tax Amount \n 23022020 \n 1,54,672.00 \n 5% \n 7,733.60 \n 7,733.60 \n Total \n 1,54,672.00 \n 7,733.60 \n 7,733.60 \n Tax Amount (in words) : Indian Rupees Seven Thousand Seven Hundred Thirty Three and Sixty paise Only\n for Bhartiya Enterprises A/c (Yr 19-20)\n Authorised Signatory",
+      "tokens": 284
+    }
+  ],
+  "children": [
+    {
+      "child_id": 216095932670808065,
+      "parent_id": 216095932670808064,
+      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) \n Credit Note No Dated \n Chakulia , PO-Chakulia \n 21 \n 1-Mar-22 \n Dist East Singh Bhum \n Mode/Terms of Payment \n GSTNO-20AAIPL4886F1ZQ \n Original Invoice No & Date Other References \n GSTIN/UIN: 20AAIPL4886F1ZQ \n State Name : Jharkhand, Code : 20 \n Buyer's Order No Dated \n Consignee (Ship to) \n Nalinaksha Agro Pvt Ltd \n Dispatch Doc No Bajekumarpur, Dist - Burdwan, GST- 19AADCN2118E1ZS \n GSTIN/UIN : 19AADCN2118E1ZS \n Dispatched through \n Destination \n State Name : West Bengal, Code : 19 \n Buyer (Bill to) \n Terms of Delivery \n Nalinaksha Agro Pvt Ltd \n Bajekumarpur, Dist - Burdwan, GST- 19AADCN2118E1ZS \n GSTIN/UIN : 19AADCN2118E1ZS \n State Name : West Bengal, Code : 19 \n Place of Supply : West Bengal \n SI No Description of Goods \n HSN/SAC \n GST Rate \n Quantity \n Rate \n per \n Amount \n 1 \n Bran \n 23022020 \n 5 % \n 1,54,672.00 \n I.G.S.T Round Off \n 7,733.60\n0.40\n Total \n ₹ 1,62,406.00 \n E & O.E \n Amount Chargeable (in words) : Indian Rupees One Lakh Sixty Two Thousand Four Hundred Six Only\n HSN/SAC \n Taxable Value \n Rate \n IGST Amount \n Total Tax Amount \n 23022020 \n 1,54,672.00 \n 5% \n 7,733.60 \n 7,733.60 \n Total \n 1,54,672.00 \n 7,733.60 \n 7,733.60 \n Tax Amount (in words) : Indian Rupees Seven Thousand Seven Hundred Thirty Three and Sixty paise Only\n for Bhartiya Enterprises A/c (Yr 19-20)\n Authorised Signatory",
+      "tokens": 284
+    }
+  ]
+}

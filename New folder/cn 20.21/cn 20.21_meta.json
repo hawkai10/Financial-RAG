@@ -3,19 +3,19 @@
   "page_stats": [
     {
       "page_id": 0,
-      "text_extraction_method": "surya",
+      "text_extraction_method": "pdftext",
       "block_counts": [
         [
           "TableCell",
-          451
-        ],
-        [
-          "Line",
-          4
+          468
         ],
         [
           "Span",
-          4
+          156
+        ],
+        [
+          "Line",
+          48
         ],
         [
           "Form",
@@ -29,12 +29,12 @@
       "block_metadata": {
         "llm_request_count": 1,
         "llm_error_count": 0,
-        "llm_tokens_used": 7032,
+        "llm_tokens_used": 7548,
         "previous_text": "",
         "previous_type": "",
         "previous_order": 0
       }
     }
   ],
-  "debug_data_path": "debug_data\\cn 21-22"
+  "debug_data_path": "debug_data\\cn 20.21"
 }

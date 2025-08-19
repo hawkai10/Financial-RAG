@@ -3,15 +3,9 @@ import time
 import json
 import hashlib
 import numpy as np
-import re
-import threading
 from typing import List, Dict, Tuple, Any, Optional
-from functools import lru_cache, wraps
-from contextlib import contextmanager
+from functools import wraps
 import pickle
-import types
-import traceback
-import sys
 import asyncio
 import aiohttp
 import aiosqlite
@@ -21,19 +15,10 @@ from rank_bm25 import BM25Okapi
 
 # Import configurations and utilities
 from config import config
-from utils import (
-    logger, validate_and_sanitize_query, create_query_hash,
-    RateLimiter, safe_mean, QueryAnalyzer, assess_chunk_quality,
-    calculate_cost_reduction, sanitize_for_json
-)
+from utils import logger, safe_mean
 
 # Import enhanced modules
 from feedback_database import EnhancedFeedbackDatabase
-from progressive_retrieval import ProgressiveRetriever
-from aggregation_optimizer import AggregationOptimizer
-from prompt_templates import PromptBuilder
-from unified_query_processor import unified_processor
-from chunk_manager import ChunkManager
 
 # ============================================================
 # OPTIMIZATION CLASSES
@@ -291,23 +276,58 @@ class AsyncConnectionPool:
 # ============================================================
 
 # Create optimized global instances
-prompt_builder = PromptBuilder()
-rate_limiter = RateLimiter(max_requests=30, time_window=60)
 feedback_db = EnhancedFeedbackDatabase()
-query_analyzer = QueryAnalyzer()
 
 # Initialize optimization instances
 chunk_cache = SmartChunkCache(max_size=500)
 embedding_cache = SmartEmbeddingCache()
 db_pool = AsyncConnectionPool(config.CHUNKS_FILE, pool_size=20) # Increased pool size
 
-# Initialize ChunkManager
-try:
-    chunk_manager = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
-    logger.info("ChunkManager initialized successfully.")
-except Exception as e:
-    logger.error(f"Failed to initialize ChunkManager: {e}", exc_info=True)
-    chunk_manager = None
+"""
+Chunk retrieval no longer relies on an external ChunkManager module.
+We keep a lightweight, lazy JSON index as a fallback when the SQLite DB
+doesn't have the chunk, with smart cache and file timestamp invalidation.
+"""
+
+# Lazy JSON index for contextualized chunks
+_chunk_file_index = None  # type: Optional[Dict[str, Dict[str, Any]]]
+_chunk_file_mtime = 0.0
+
+def _load_chunk_file_index() -> Dict[str, Dict[str, Any]]:
+    global _chunk_file_index, _chunk_file_mtime
+    path = config.CONTEXTUALIZED_CHUNKS_JSON_PATH
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return {}
+
+    if _chunk_file_index is not None and abs(_chunk_file_mtime - mtime) < 1e-9:
+        return _chunk_file_index
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Data may be a list of chunks or an object with a key containing the list
+        chunks = data
+        if isinstance(data, dict):
+            # Common keys that might contain the list
+            for key in ("chunks", "data", "items", "records"):
+                if key in data and isinstance(data[key], list):
+                    chunks = data[key]
+                    break
+        index = {}
+        if isinstance(chunks, list):
+            for ch in chunks:
+                if isinstance(ch, dict):
+                    cid = ch.get("chunk_id") or ch.get("uid") or ch.get("id")
+                    if cid:
+                        index[str(cid)] = ch
+        _chunk_file_index = index
+        _chunk_file_mtime = mtime
+        return _chunk_file_index
+    except Exception as e:
+        logger.warning(f"Failed to load chunk JSON index from {path}: {e}")
+        return {}
 
 # Custom exceptions
 class GeminiAPIError(Exception):
@@ -442,25 +462,14 @@ async def call_gemini_enhanced(prompt: str, **kwargs) -> str:
         raise GeminiAPIError(f"API call failed: {e}")
 
 async def get_chunk_by_id_enhanced(embeddings: Embeddings, uid: str) -> Dict[str, Any]:
-    """Enhanced chunk retrieval with connection pooling and caching."""
+    """Enhanced chunk retrieval with connection pooling and caching (DB first, then JSON)."""
     
     # Try smart cache first (fastest)
     cached_chunk = chunk_cache.get(uid, config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
     if cached_chunk:
         return cached_chunk
 
-    # Use ChunkManager as the primary source
-    if chunk_manager:
-        try:
-            chunk_data = chunk_manager.get_chunk(uid)
-            if chunk_data:
-                chunk_data["retrieval_method"] = "chunk_manager"
-                chunk_cache.put(uid, chunk_data, config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
-                return chunk_data
-        except Exception as e:
-            logger.error(f"ChunkManager retrieval failed for {uid}: {e}")
-
-    # Fallback to database if ChunkManager fails or is not available
+    # Try database first
     try:
         async with db_pool.get_connection_context() as conn:
             cursor = await conn.cursor()
@@ -477,6 +486,19 @@ async def get_chunk_by_id_enhanced(embeddings: Embeddings, uid: str) -> Dict[str
                 return chunk_data
     except Exception as e:
         logger.error(f"Database lookup with pooling failed: {e}")
+
+    # Fallback to JSON index
+    try:
+        index = _load_chunk_file_index()
+        ch = index.get(str(uid))
+        if ch:
+            # Normalize fields
+            text = ch.get("text") or ch.get("content") or ch.get("chunk_text") or "Content not available"
+            chunk_data = {**ch, "text": text, "retrieval_method": "json_index"}
+            chunk_cache.put(uid, chunk_data, config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
+            return chunk_data
+    except Exception as e:
+        logger.error(f"JSON index lookup failed for {uid}: {e}")
     
     logger.warning(f"Chunk {uid} not found in any source")
     return {
@@ -487,27 +509,22 @@ async def get_chunk_by_id_enhanced(embeddings: Embeddings, uid: str) -> Dict[str
     }
 
 def get_chunk_from_file_enhanced(uid: str) -> Dict[str, Any]:
-    """
-    Retrieve a specific chunk by its UID using the ChunkManager.
-    This function is now primarily a fallback or for specific cases.
-    """
-    if not chunk_manager:
-        logger.error("ChunkManager is not available.")
-        return {"error": "ChunkManager not initialized."}
+    """Retrieve a specific chunk by its UID from the lazy JSON index."""
     try:
-        chunk = chunk_manager.get_chunk(uid)
-        if chunk:
-            return chunk
-        else:
-            logger.warning(f"Chunk with UID {uid} not found by ChunkManager.")
-            return {
-                "chunk_id": uid,
-                "text": "Content not available",
-                "error": "Chunk not found",
-                "retrieval_method": "error"
-            }
+        index = _load_chunk_file_index()
+        ch = index.get(str(uid))
+        if ch:
+            text = ch.get("text") or ch.get("content") or ch.get("chunk_text") or "Content not available"
+            return {**ch, "text": text, "retrieval_method": "json_index"}
+        logger.warning(f"Chunk with UID {uid} not found in JSON index.")
+        return {
+            "chunk_id": uid,
+            "text": "Content not available",
+            "error": "Chunk not found",
+            "retrieval_method": "error"
+        }
     except Exception as e:
-        logger.error(f"Failed to retrieve chunk {uid} via ChunkManager: {e}", exc_info=True)
+        logger.error(f"Failed to retrieve chunk {uid} from JSON index: {e}", exc_info=True)
         return {"error": f"Failed to retrieve chunk {uid}", "details": str(e)}
 
 async def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], topn: int = 5,
@@ -566,254 +583,270 @@ async def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], t
         logger.error(f"Enhanced retrieval failed: {e}")
         raise RetrievalError(f"Retrieval failed: {e}")
 
-async def enhanced_retrieve(embeddings: Embeddings, queries: List[str], topn: int = 5, 
-                     strategy: str = "Standard") -> Tuple[List[Tuple[str, Dict[str, Any]]], Dict[str, Any]]:
-    """Enhanced retrieval with progressive and hybrid options."""
-    
-    # Use progressive retrieval if enabled
-    if config.PROGRESSIVE_RETRIEVAL_ENABLED:
-        try:
-            retriever = ProgressiveRetriever(embeddings)
-            return await retriever.retrieve_progressively(queries, strategy, confidence=0.8)
-        except Exception as e:
-            logger.warning(f"Progressive retrieval failed, falling back to simple: {e}")
-    
-    # Fall back to simple enhanced retrieval
-    return await simple_retrieve_enhanced(embeddings, queries, topn, strategy=strategy)
+# Note: enhanced_retrieve removed to simplify to single-strategy path.
 
-async def synthesize_answer_enhanced(question: str, chunks: List[Dict[str, Any]], 
-                             strategy: str = "Standard", optimization_result: Dict = None,
-                             use_hierarchical: bool = False) -> str:
-    """Enhanced answer synthesis with strategy-aware optimization."""
-    
-    if not chunks:
-        return "I couldn't find relevant information to answer your question."
-    
+async def _normalize_query_with_llm(question: str) -> Tuple[str, List[str]]:
+    """Ask the LLM to correct grammar and produce two similar queries. Returns (corrected, similars)."""
     try:
-        # Build context from chunks
-        context_parts = []
-        for i, chunk in enumerate(chunks[:10]):  # Limit to top 10 chunks
-            chunk_text = chunk.get('chunk_text', chunk.get('text', ''))
-            doc_name = chunk.get('document_name', f'Document {i+1}')
-            
-            if chunk_text:
-                context_parts.append(f"[Source: {doc_name}]\n{chunk_text}\n")
-        
-        context = "\n".join(context_parts)
-        
-        # Strategy-specific prompts with natural language formatting
-        if strategy == "Aggregation":
-            prompt = f"""Based on the following documents, provide a comprehensive aggregation for: "{question}"
+        prompt = (
+            "You are a query reformulator.\n"
+            "Task: 1) Fix grammar and make the query clearer. 2) Provide two similar alternative queries.\n"
+            "Output JSON with fields: corrected, alternatives(list of 2).\n\n"
+            f"Query: {question}"
+        )
+        raw = await call_gemini_enhanced(prompt)
+        try:
+            data = json.loads(raw)
+            corrected = data.get("corrected") or question
+            alts = data.get("alternatives") or []
+            if isinstance(alts, list):
+                alts = [str(a) for a in alts][:2]
+            else:
+                alts = []
+            return corrected, alts
+        except Exception:
+            # Fallback: return original and no alts
+            return question, []
+    except Exception:
+        return question, []
 
-TASK: Extract and list ALL relevant items, data points, or instances found in the documents.
 
-CONTEXT:
-{context}
+async def _hybrid_child_first_parent_aggregation(*args, **kwargs):
+    """Deprecated: kept only for import safety if referenced elsewhere."""
+    raise NotImplementedError("Deprecated: use execute_single_strategy via rag_query_enhanced")
 
-INSTRUCTIONS:
-- List every relevant item found
-- Include specific values, amounts, dates, and references  
-- Group similar items but preserve individual instances
-- Provide totals or summaries where appropriate
-- Use clear, natural language formatting
 
-FORMATTING GUIDELINES:
-- Use clear headings and sections
-- Present data in well-structured tables when appropriate
-- Use bullet points for lists
-- Write in a professional, readable format
-- Do NOT use HTML tags or markup
-- Provide clean, properly spaced text output
+async def _retrieve_children_hybrid(query: str, max_children: int = 24) -> Tuple[List[Dict[str, Any]], Dict[str, int], List[str]]:
+    """Return child chunks with merged dense+sparse score, a child->parent mapping, and related queries."""
+    from parent_child.retriever import ParentContextRetriever
+    from parent_child.vector_store_factory import get_child_vector_store
 
-Please provide a clear, well-structured answer in natural language:"""
-        
-        elif strategy == "Analyse":
-            prompt = f"""Analyze the following documents to answer: "{question}"
+    corrected, sims = await _normalize_query_with_llm(query)
+    queries = [corrected] + sims
 
-CONTEXT:
-{context}
+    retriever = ParentContextRetriever()
+    vec = get_child_vector_store()
+    embedder = retriever.embedder
 
-TASK: Provide a detailed analysis including:
-- Key patterns and trends identified
-- Important insights and relationships
-- Comparative analysis where relevant
-- Supporting evidence from the documents
-- Actionable conclusions
-
-FORMATTING GUIDELINES:
-- Use clear section headings
-- Write in well-structured paragraphs
-- Use bullet points for key findings
-- Present data clearly and professionally
-- Do NOT use HTML tags or markup
-- Provide clean, properly spaced text output
-
-Please provide a clear, well-structured analysis in natural language:"""
-        
-        else:  # Standard
-            prompt = f"""Answer the following question based on the provided context: "{question}"
-
-CONTEXT:
-{context}
-
-Please provide a clear, accurate answer based on the information above. If you cannot find specific information to answer the question, please state that clearly.
-
-FORMATTING GUIDELINES:
-- Write in clear, natural language
-- Use proper spacing and structure
-- Present information in a readable format
-- Do NOT use HTML tags or markup
-- Provide clean, well-formatted text
-
-Please provide a clear answer in natural language:"""
-        
-        # Call Gemini API
-        response = await call_gemini_enhanced(prompt)
-        
-        if not response or len(response.strip()) < 10:
-            return "I was unable to generate a comprehensive answer based on the available information."
-        
-        # Clean and format the HTML response for UI display
-        formatted_response = _format_html_response(response.strip(), strategy)
-        return formatted_response
-        
-    except Exception as e:
-        logger.error(f"Answer synthesis failed: {e}")
-        return f"I encountered an error while processing your question: {str(e)}"
-
-def _format_html_response(response: str, strategy: str) -> str:
-    """Format the LLM response for proper HTML display in UI."""
-    
-    # Clean up any HTML artifacts that might be causing display issues
-    cleaned_response = response
-    
-    # Remove HTML code block markers
-    cleaned_response = cleaned_response.replace('```html', '')
-    cleaned_response = cleaned_response.replace('```', '')
-    
-    # Remove extra paragraph tags that are being displayed
-    cleaned_response = cleaned_response.replace('<p><p>', '<p>')
-    cleaned_response = cleaned_response.replace('</p></p>', '</p>')
-    
-    # Remove any standalone HTML comments or artifacts
-    import re
-    cleaned_response = re.sub(r'<p>\s*</p>', '', cleaned_response)  # Remove empty paragraphs
-    cleaned_response = re.sub(r'\n\s*\n', '\n', cleaned_response)  # Remove multiple newlines
-    
-    # If response already contains HTML tags, just clean and return
-    if any(tag in cleaned_response for tag in ['<table>', '<td>', '<h1>', '<h2>', '<h3>', '<p>', '<ul>', '<li>']):
-        return cleaned_response.strip()
-    
-    # For natural language responses, convert to clean HTML
-    lines = cleaned_response.split('\n')
-    formatted_lines = []
-    in_table_section = False
-    
-    for line in lines:
-        line = line.strip()
-        if not line:
-            formatted_lines.append('<br>')
+    dense_hits: List[Dict[str, Any]] = []
+    for q in queries:
+        try:
+            qv = embedder.encode(q).tolist()
+            res = vec.search(qv, top_k=max_children)
+            for r in res:
+                r["query"] = q
+            dense_hits.extend(res)
+        except Exception:
             continue
-            
-        # Check if this looks like a table header or data
-        if ('|' in line or 
-            line.lower().startswith(('document', 'invoice', 'amount', 'date', 'company')) and 
-            ('no.' in line.lower() or 'amount' in line.lower() or 'date' in line.lower())):
-            
-            # Start table formatting for structured data
-            if not in_table_section:
-                formatted_lines.append('<table class="table table-striped">')
-                in_table_section = True
-            
-            # Format as table row
-            if '|' in line:
-                cells = [cell.strip() for cell in line.split('|')]
-                formatted_lines.append('<tr>')
-                for cell in cells:
-                    if cell:  # Skip empty cells
-                        formatted_lines.append(f'<td>{cell}</td>')
-                formatted_lines.append('</tr>')
-            else:
-                # Single line data, treat as table row
-                formatted_lines.append(f'<tr><td colspan="4">{line}</td></tr>')
-        
-        else:
-            # End table if we were in one
-            if in_table_section:
-                formatted_lines.append('</table>')
-                in_table_section = False
-            
-            # Format other content types
-            if (line.lower().startswith(('total', 'summary', 'conclusion')) or 
-                '**' in line or line.isupper()):
-                # Important information - make it stand out
-                formatted_lines.append(f'<p><strong>{line.replace("**", "")}</strong></p>')
-            elif line.endswith(':') and len(line) < 100:
-                # Looks like a heading
-                formatted_lines.append(f'<h4>{line}</h4>')
-            elif line.startswith(('- ', '• ', '* ')):
-                # List item
-                formatted_lines.append(f'<li>{line[2:].strip()}</li>')
-            elif line.startswith(tuple(str(i) + '.' for i in range(1, 10))):
-                # Numbered list
-                formatted_lines.append(f'<li>{line[2:].strip()}</li>')
-            else:
-                # Regular paragraph
-                formatted_lines.append(f'<p>{line}</p>')
-    
-    # Close table if still open
-    if in_table_section:
-        formatted_lines.append('</table>')
-    
-    # Wrap list items in ul tags
-    result = '\n'.join(formatted_lines)
-    result = re.sub(r'(<li>.*?</li>)', r'<ul>\1</ul>', result, flags=re.DOTALL)
-    
-    return result
+
+    # Build corpus for BM25 over candidate child snippets
+    child_docs: Dict[str, str] = {}
+    child_parent: Dict[str, int] = {}
+    for h in dense_hits:
+        payload = h.get("payload", {})
+        cid = str(payload.get("child_id") or h.get("child_id"))
+        snippet = payload.get("snippet") or ""
+        if not cid:
+            continue
+        try:
+            child_parent[cid] = int(payload.get("parent_id"))
+        except Exception:
+            pass
+        if snippet and cid not in child_docs:
+            child_docs[cid] = snippet
+
+    corpus_ids = list(child_docs.keys())
+    corpus_texts = [child_docs[cid] for cid in corpus_ids]
+
+    bm25_scores: Dict[str, float] = {}
+    if corpus_texts:
+        try:
+            tokenized = [txt.split() for txt in corpus_texts]
+            bm25 = BM25Okapi(tokenized)
+            for q in queries:
+                q_tokens = q.split()
+                scores = bm25.get_scores(q_tokens)
+                for idx, s in enumerate(scores):
+                    cid = corpus_ids[idx]
+                    bm25_scores[cid] = max(bm25_scores.get(cid, 0.0), float(s))
+        except Exception:
+            pass
+
+    # Merge dense + sparse
+    child_score_map: Dict[str, float] = {}
+    for h in dense_hits:
+        cid = str(h.get("payload",{}).get("child_id") or h.get("child_id"))
+        if not cid:
+            continue
+        dense_score = float(h.get("score", 0.0))
+        sparse_score = bm25_scores.get(cid, 0.0)
+        norm_sparse = sparse_score / (len(corpus_texts) or 1)
+        child_score_map[cid] = max(child_score_map.get(cid, 0.0), dense_score + norm_sparse)
+
+    # Build deduped child chunks
+    ranked = sorted(child_score_map.items(), key=lambda it: it[1], reverse=True)[:max_children]
+    child_chunks: List[Dict[str, Any]] = []
+    for cid, score in ranked:
+        snippet = child_docs.get(cid, "")
+        child_chunks.append({
+            "chunk_id": f"child_{cid}",
+            "chunk_text": snippet,
+            "text": snippet,
+            "retrieval_score": float(score),
+            "retrieval_method": "child_hybrid",
+            "child_id": cid
+        })
+
+    return child_chunks, child_parent, queries
+
+
+async def synthesize_answer_simple(question: str, parent_chunks: List[Dict[str, Any]], related_queries: Optional[List[str]] = None) -> str:
+    """Single-strategy synthesis: answer from parent contexts with optional related queries block."""
+    if not parent_chunks:
+        return "I couldn't find relevant information to answer your question."
+    # Build context
+    ctx = []
+    for i, pc in enumerate(parent_chunks[:5], 1):
+        name = pc.get("document_name", f"Doc {i}")
+        txt = pc.get("chunk_text", pc.get("text", ""))
+        ctx.append(f"[Source {i}: {name}]\n{txt}\n")
+    context = "\n".join(ctx)
+    rq_block = ""
+    if related_queries:
+        rq_lines = "\n".join([f"- {q}" for q in related_queries[:3]])
+        rq_block = f"\n\nRELATED QUERIES:\n{rq_lines}\n"
+    prompt = (
+        "You are an assistant answering from financial documents. If uncertain, say you don't know.\n\n"
+        f"Question: {question}\n"
+        f"{rq_block}\n"
+        f"Context:\n{context}\n"
+        "Answer concisely and cite facts from the context."
+    )
+    try:
+        return await call_gemini_enhanced(prompt)
+    except Exception as e:
+        logger.error(f"Simple synthesis failed: {e}")
+        return "I couldn't generate an answer at this time."
+
+
+async def execute_single_strategy(question: str, embeddings: Embeddings, top_children: int = 24, top_parents: int = 3) -> Dict[str, Any]:
+    """End-to-end: normalize -> hybrid child retrieve -> dedup -> rerank -> pick top-3 children -> parents -> answer."""
+    start_time = time.time()
+    # 1) Children via hybrid
+    child_chunks, child_to_parent, queries = await _retrieve_children_hybrid(question, max_children=top_children)
+    # 2) Rerank children
+    reranked_children = child_chunks
+    try:
+        from document_reranker import EnhancedDocumentReranker
+        rr = EnhancedDocumentReranker()
+        reranked_children, _ = rr.rerank_chunks(question, child_chunks, strategy="Simple")
+    except Exception as e:
+        logger.warning(f"Child reranking failed, using merged scores: {e}")
+
+    # 3) Take top-3 children
+    def child_score(c: Dict[str, Any]) -> float:
+        return float(c.get("final_rerank_score", c.get("retrieval_score", 0.0)))
+
+    top_children_sel = sorted(reranked_children, key=child_score, reverse=True)[:top_parents]
+
+    # 4) Get their parents (dedup)
+    parent_ids: List[int] = []
+    seen = set()
+    for c in top_children_sel:
+        cid = str(c.get("child_id") or str(c.get("chunk_id", ""))[6:])
+        pid = child_to_parent.get(cid)
+        if pid is None:
+            continue
+        if pid not in seen:
+            seen.add(pid)
+            parent_ids.append(pid)
+        if len(parent_ids) >= top_parents:
+            break
+
+    from parent_child.parent_store import ParentStore
+    parents = ParentStore().get_parents_by_ids(parent_ids)
+    parent_chunks: List[Dict[str, Any]] = []
+    for p in parents:
+        parent_chunks.append({
+            "chunk_id": f"parent_{p.parent_id}",
+            "chunk_text": p.content,
+            "text": p.content,
+            "document_name": str(p.document_id),
+            "page_start": p.page_start,
+            "page_end": p.page_end,
+            "retrieval_score": 1.0,
+            "retrieval_method": "parent_from_top_children"
+        })
+
+    # 5) Build prompt and synthesize (also capture prompt for debugging)
+    # Build context
+    ctx = []
+    for i, pc in enumerate(parent_chunks[:5], 1):
+        name = pc.get("document_name", f"Doc {i}")
+        txt = pc.get("chunk_text", pc.get("text", ""))
+        ctx.append(f"[Source {i}: {name}]\n{txt}\n")
+    context = "\n".join(ctx)
+    rq_block = ""
+    if queries:
+        rq_lines = "\n".join([f"- {q}" for q in queries[:3]])
+        rq_block = f"\n\nRELATED QUERIES:\n{rq_lines}\n"
+    prompt = (
+        "You are an assistant answering from financial documents. If uncertain, say you don't know.\n\n"
+        f"Question: {question}\n"
+        f"{rq_block}\n"
+        f"Context:\n{context}\n"
+        "Answer concisely and cite facts from the context."
+    )
+    try:
+        answer = await call_gemini_enhanced(prompt)
+    except Exception as e:
+        logger.error(f"LLM synthesis failed: {e}")
+        answer = "I couldn't generate an answer at this time."
+    processing_time = time.time() - start_time
+    return {
+        "answer": answer,
+        "llm_prompt": prompt,
+        "corrected_query": queries[0] if queries else question,
+        "multiqueries": queries[1:] if len(queries) > 1 else [],
+        "chunks": parent_chunks,
+        "top_children_chunks": [
+            {
+                "chunk_id": c.get("chunk_id"),
+                "child_id": c.get("child_id"),
+                "text": c.get("chunk_text", c.get("text", "")),
+                "retrieval_score": c.get("retrieval_score"),
+                "final_rerank_score": c.get("final_rerank_score")
+            }
+            for c in top_children_sel
+        ],
+        "all_chunks_count": len(parent_chunks),
+        "processing_time": processing_time,
+        "session_id": "anonymous",
+        "avg_relevance_score": safe_mean([child_score(c) for c in top_children_sel]) if top_children_sel else 0.0,
+        "query_strategy": "Simple",
+        "retrieval_method": "single_strategy_child_parent",
+        "retrieval_info": {"queries": queries, "top_children": len(child_chunks), "parents": parent_ids},
+        "optimization_result": None,
+        "savings_info": None,
+        "processing_method": "simple",
+        "hierarchical_stats": None,
+        "agent_used": "Single-Strategy"
+    }
 
 @smart_cache.cache_query_result(ttl_hours=1)
 async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
                       filters: Optional[Dict] = None, enable_reranking: bool = True,
                       session_id: str = None, enable_optimization: bool = True) -> Dict[str, Any]:
-    """Enhanced RAG pipeline with hybrid query routing and unified preprocessing."""
+    """Single-strategy RAG pipeline: normalize -> hybrid children -> rerank -> parents -> LLM."""
     start_time = time.time()
-    logger.info(f"Starting hybrid RAG query: {question[:100]}...")
+    logger.info(f"Starting single-strategy RAG query: {question[:100]}...")
     
     try:
-        # STEP 1: Enhanced unified preprocessing with hybrid classification
-        processed = unified_processor.process_query_unified(question)
-        corrected_query = processed['corrected_query']
-        intent = processed['intent']
-        confidence = processed['confidence']
-        alternative_queries = processed['alternative_queries']
-        aggregation_type = processed.get('aggregation_type', 'none')
-        complexity_level = processed.get('complexity_level', 'simple')
-        requires_multi_step = processed.get('requires_multi_step', False)
-        
-        logger.info(f"Hybrid classification: {intent} | Aggregation: {aggregation_type} | Complexity: {complexity_level}")
-        
-        # STEP 2: Route to appropriate agent based on classification
-        if intent == "Aggregation" and aggregation_type != 'none':
-            # Route to Mini-Agent for pattern-based extraction
-            logger.info(f"Routing to Mini-Agent: {aggregation_type}")
-            return await route_to_mini_agent(corrected_query, aggregation_type, embeddings, start_time)
-        
-        elif intent == "Analyse" and (complexity_level in ['moderate', 'complex'] or requires_multi_step):
-            # Route to Full Agent for complex reasoning
-            logger.info(f"Routing to Full-Agent: {complexity_level}")
-            return await route_to_full_agent(corrected_query, complexity_level, embeddings, start_time)
-        
-        else:
-            # Continue with Standard RAG pipeline (existing logic)
-            logger.info(f"Routing to Standard RAG: {intent}")
-            return await execute_standard_rag(
-                corrected_query, intent, confidence, alternative_queries, 
-                embeddings, topn, filters, enable_reranking, session_id, 
-                enable_optimization, start_time, processed  # Pass classification data
-            )
+        # Always use the single strategy
+        return await execute_single_strategy(question, embeddings, top_children=max(topn*3, 24), top_parents=3)
             
     except Exception as e:
-        logger.error(f"Hybrid RAG query failed: {e}")
+        logger.error(f"RAG query failed: {e}")
         return {
             "answer": f"I encountered an error processing your query: {str(e)}",
             "chunks": [],
@@ -821,281 +854,6 @@ async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 
             "success": False,
             "processing_time": time.time() - start_time
         }
-
-async def route_to_mini_agent(query: str, aggregation_type: str, embeddings: Embeddings, start_time: float) -> Dict[str, Any]:
-    """Route query to Mini-Agent for pattern-based extraction."""
-    
-    try:
-        # Initialize Mini-Agent if not already done
-        from mini_agent import mini_agent, initialize_mini_agent
-        from progressive_retrieval import ProgressiveRetriever
-        
-        if mini_agent is None:
-            chunk_manager_instance = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
-            progressive_retriever = ProgressiveRetriever(embeddings)
-            mini_agent_instance = initialize_mini_agent(chunk_manager_instance, progressive_retriever)
-        else:
-            mini_agent_instance = mini_agent
-        
-        # Process with Mini-Agent
-        result = await mini_agent_instance.process_aggregation_query(query, aggregation_type)
-        
-        # Check if fallback is needed
-        if result.get('should_fallback', False):
-            logger.info("Mini-Agent recommends fallback to Standard RAG")
-            return await fallback_to_standard_rag(query, embeddings, start_time)
-        
-        # Add standard metadata
-        result.update({
-            "processing_time": time.time() - start_time,
-            "query": query,
-            "agent_used": "Mini-Agent",
-            "chunks": []  # Mini-agent doesn't return chunks in standard format
-        })
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Mini-Agent routing failed: {e}")
-        return await fallback_to_standard_rag(query, embeddings, start_time)
-
-async def route_to_full_agent(query: str, complexity_level: str, embeddings: Embeddings, start_time: float) -> Dict[str, Any]:
-    """Route query to Full Agent for complex reasoning."""
-    
-    try:
-        # Initialize Full Agent if not already done
-        from full_agent import full_agent, initialize_full_agent
-        from progressive_retrieval import ProgressiveRetriever
-        
-        if full_agent is None:
-            chunk_manager_instance = ChunkManager(config.CONTEXTUALIZED_CHUNKS_JSON_PATH)
-            progressive_retriever = ProgressiveRetriever(embeddings)
-            full_agent_instance = initialize_full_agent(chunk_manager_instance, progressive_retriever, call_gemini_enhanced)
-        else:
-            full_agent_instance = full_agent
-        
-        # Process with Full Agent
-        result = await full_agent_instance.process_complex_query(query, complexity_level)
-        
-        # Check if fallback is needed
-        if result.get('should_fallback', False):
-            logger.info("Full Agent recommends fallback to Standard RAG")
-            return await fallback_to_standard_rag(query, embeddings, start_time)
-        
-        # Add standard metadata
-        result.update({
-            "processing_time": time.time() - start_time,
-            "query": query,
-            "agent_used": "Full-Agent",
-            "chunks": []  # Full agent manages chunks internally
-        })
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Full Agent routing failed: {e}")
-        return await fallback_to_standard_rag(query, embeddings, start_time)
-
-async def fallback_to_standard_rag(query: str, embeddings: Embeddings, start_time: float) -> Dict[str, Any]:
-    """Fallback to standard RAG when agents fail."""
-    
-    logger.info("Falling back to Standard RAG pipeline")
-    
-    # Create basic classification for fallback
-    basic_classification = {
-        'corrected_query': query,
-        'intent': 'Standard',
-        'confidence': 0.5,
-        'reasoning': 'Fallback processing',
-        'alternative_queries': [query],
-        'aggregation_type': 'none',
-        'complexity_level': 'simple',
-        'requires_multi_step': False
-    }
-    
-    # Use existing standard RAG logic
-    return await execute_standard_rag(
-        query, "Standard", 0.8, [query], embeddings, 
-        topn=5, filters=None, enable_reranking=True, 
-        session_id=None, enable_optimization=True, 
-        start_time=start_time, processed=basic_classification
-    )
-
-async def execute_standard_rag(corrected_query: str, intent: str, confidence: float, 
-                             alternative_queries: List[str], embeddings: Embeddings,
-                             topn: int, filters: Optional[Dict], enable_reranking: bool,
-                             session_id: str, enable_optimization: bool, start_time: float,
-                             processed: Dict[str, Any]) -> Dict[str, Any]:
-    """Execute the standard RAG pipeline (existing logic)."""
-    
-    try:
-        # Map intent to strategy using config
-        query_strategy = config.INTENT_TO_STRATEGY.get(intent, "Standard")
-        logger.info(f"Standard RAG processing: {intent} -> {query_strategy} (confidence: {confidence:.3f})")
-        
-        # Generate multiqueries with unified results
-        multiqueries = [corrected_query] + alternative_queries
-        
-        # Strategy-specific retrieval with optimizations
-        if config.PROGRESSIVE_RETRIEVAL_ENABLED:
-            retriever = ProgressiveRetriever(embeddings)
-            chunks, retrieval_info = await retriever.retrieve_progressively(multiqueries, query_strategy, confidence)
-        else:
-            chunk_results, retrieval_info = await enhanced_retrieve(embeddings, multiqueries, topn=topn, strategy=query_strategy)
-            chunks = []
-            if chunk_results:
-                chunk_tasks = [get_chunk_by_id_enhanced(embeddings, uid) for uid, score_info in chunk_results]
-                retrieved_chunks = await asyncio.gather(*chunk_tasks)
-                
-                for i, chunk in enumerate(retrieved_chunks):
-                    if chunk and not chunk.get("error"):
-                        chunk.update(chunk_results[i][1])
-                        chunks.append(chunk)
-
-        # Apply reranking if enabled
-        optimization_result = None
-        if enable_reranking and chunks:
-            from document_reranker import EnhancedDocumentReranker
-            reranker = EnhancedDocumentReranker()
-            chunks, rerank_info = reranker.rerank_chunks(corrected_query, chunks, query_strategy)
-            
-            # Apply aggregation optimization if needed
-            if query_strategy == "Aggregation" and config.SAMPLING_AGGREGATION_ENABLED:
-                optimizer = AggregationOptimizer()
-                optimization_result = optimizer.optimize_aggregation(corrected_query, chunks)
-                if optimization_result.get("catalog"):
-                    chunks = optimization_result["catalog"].get("sample_content", chunks)
-        
-        # Intelligent processing approach selection - Universal Hierarchical Processing
-        estimated_total_tokens = _estimate_total_tokens(chunks, query_strategy)
-        token_capacity = config.MAX_CONTEXT_LENGTH - 500
-        
-        should_use_hierarchical = (
-            config.HIERARCHICAL_PROCESSING_ENABLED and 
-            (estimated_total_tokens > token_capacity or len(chunks) > config.HIERARCHICAL_CHUNK_THRESHOLD)
-        )
-        
-        if should_use_hierarchical:
-            from hierarchical_processor import HierarchicalProcessor, ProcessingConfig
-            
-            async def llm_function_async(prompt: str, batch_chunks: List[Dict]) -> str:
-                return await synthesize_answer_enhanced(prompt, batch_chunks, query_strategy, None, use_hierarchical=True)
-
-            hierarchical_config = ProcessingConfig(
-                max_tokens_per_batch=config.HIERARCHICAL_MAX_TOKENS_PER_BATCH,
-                min_chunks_per_batch=config.HIERARCHICAL_MIN_CHUNKS_PER_BATCH,
-                max_chunks_per_batch=config.HIERARCHICAL_MAX_CHUNKS_PER_BATCH,
-                parallel_batches=config.HIERARCHICAL_PARALLEL_BATCHES,
-                enable_parallel=config.HIERARCHICAL_ENABLE_PARALLEL
-            )
-            
-            processor = HierarchicalProcessor(llm_function_async, hierarchical_config)
-            processor.set_query_strategy(query_strategy)
-            
-            hierarchical_result = await processor.process_large_query_async(corrected_query, chunks, query_strategy)
-            
-            answer = hierarchical_result['final_answer']
-            processing_method = f"hierarchical-{query_strategy.lower()}"
-            hierarchical_stats = hierarchical_result['processing_stats']
-        else:
-            answer = await synthesize_answer_enhanced(corrected_query, chunks, query_strategy, optimization_result)
-            processing_method = "standard"
-            hierarchical_stats = None
-            logger.info(f"📄 Standard processing ({query_strategy}): {len(chunks)} chunks, est. tokens: {estimated_total_tokens}")
-        
-        # Calculate metrics and build response
-        processing_time = time.time() - start_time
-        avg_score = safe_mean([chunk.get('final_rerank_score', chunk.get('retrieval_score', 0)) for chunk in chunks])
-        
-        original_strategy_limits = {
-            "Standard": 5, "Analyse": 8, "Aggregation": 20
-        }
-        original_count = original_strategy_limits.get(query_strategy, 5)
-        chunks_saved = max(0, original_count - len(chunks))
-        cost_reduction = (chunks_saved / original_count * 100) if original_count > 0 else 0
-        
-        savings_info = {
-            'original_chunks': original_count,
-            'optimized_chunks': len(chunks),
-            'chunks_saved': chunks_saved,
-            'cost_reduction_percentage': round(cost_reduction, 2)
-        }
-        
-        display_chunks = chunks[:5]
-        
-        result = {
-            "answer": answer,
-            "corrected_query": corrected_query,
-            "multiqueries": alternative_queries,
-            "chunks": display_chunks,
-            "all_chunks_count": len(chunks),
-            "processing_time": processing_time,
-            "session_id": session_id or "anonymous",
-            "avg_relevance_score": round(avg_score, 3),
-            "query_strategy": query_strategy,
-            "classification": processed,  # Add classification data
-            "optimization_used": enable_optimization,
-            "retrieval_method": retrieval_info.get("method", "unknown"),
-            "retrieval_info": retrieval_info,
-            "optimization_result": optimization_result,
-            "savings_info": savings_info,
-            "processing_method": processing_method,
-            "hierarchical_stats": hierarchical_stats,
-            "agent_used": "Standard-RAG"
-        }
-        
-        sanitized_result = sanitize_for_json(result)
-        logger.info(f"Standard RAG completed in {processing_time:.2f}s - Strategy: {query_strategy}, Chunks: {len(chunks)}")
-        
-        return sanitized_result
-        
-    except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"Standard RAG pipeline failed: {e}")
-        return {
-            "answer": f"Standard RAG processing failed: {str(e)}",
-            "chunks": [],
-            "strategy": "Error",
-            "success": False,
-            "processing_time": processing_time,
-            "agent_used": "Standard-RAG"
-        }
-
-async def _create_error_response_async(error_msg: str, question: str, multiqueries: List[str], 
-                          start_time: float, status: str, retrieval_info: Dict, 
-                          session_id: str) -> Dict[str, Any]:
-    """Async version of create_error_response."""
-    return _create_error_response(error_msg, question, multiqueries, start_time, status, retrieval_info, session_id)
-
-
-def _estimate_total_tokens(chunks: List[Dict], strategy: str) -> int:
-    """Estimate total tokens needed for all chunks."""
-    try:
-        total_chars = sum(len(chunk.get('chunk_text', chunk.get('text', ''))) for chunk in chunks)
-        # Rough estimation: 4 characters per token
-        estimated_tokens = total_chars // 4
-        return estimated_tokens
-    except:
-        return len(chunks) * 200  # Fallback estimate
-
-def _create_error_response(error_msg: str, question: str, multiqueries: List[str], 
-                          start_time: float, status: str, retrieval_info: Dict, 
-                          session_id: str) -> Dict[str, Any]:
-    """Create standardized error response."""
-    return {
-        "answer": f"I encountered an error while processing your question: {error_msg}",
-        "corrected_query": question,
-        "multiqueries": multiqueries,
-        "chunks": [],
-        "all_chunks_count": 0,
-        "processing_time": time.time() - start_time,
-        "session_id": session_id or "anonymous",
-        "avg_relevance_score": 0.0,
-        "query_strategy": "Standard",
-        "error": error_msg,
-        "status": status,
-        "retrieval_info": retrieval_info
-    }
 
 def get_optimization_stats():
     """Get comprehensive optimization statistics."""
@@ -1278,55 +1036,6 @@ get_system_health = get_system_health_enhanced
 debug_query_processing = debug_query_processing_enhanced
 call_gemini = call_gemini_enhanced
 
-# Legacy functions for compatibility
-def correct_query(query: str) -> str:
-    """Legacy function for backward compatibility."""
-    try:
-        processed = unified_processor.process_query_unified(query)
-        return processed['corrected_query']
-    except:
-        return query
-
-def generate_multiqueries(query: str) -> List[str]:
-    """Legacy function for backward compatibility."""
-    try:
-        processed = unified_processor.process_query_unified(query)
-        return [processed['corrected_query']] + processed['alternative_queries']
-    except:
-        return [query]
-
-def get_document_catalog_enhanced(chunks: List[Dict]) -> Dict:
-    """Enhanced document catalog generation."""
-    if not chunks:
-        return {"documents": [], "total_count": 0}
-    
-    doc_catalog = {}
-    for chunk in chunks:
-        doc_name = chunk.get('document_name', 'Unknown')
-        if doc_name not in doc_catalog:
-            doc_catalog[doc_name] = {
-                'name': doc_name,
-                'chunks': 0,
-                'total_tokens': 0
-            }
-        doc_catalog[doc_name]['chunks'] += 1
-        doc_catalog[doc_name]['total_tokens'] += chunk.get('num_tokens', 0)
-    
-    return {
-        "documents": list(doc_catalog.values()),
-        "total_count": len(doc_catalog),
-        "total_chunks": len(chunks)
-    }
-
-def get_document_catalog(chunks: List[Dict]) -> Dict:
-    """Legacy function for backward compatibility."""
-    return get_document_catalog_enhanced(chunks)
-
-def synthesize_answer_scalable(question: str, retrieved_chunks: List[Dict[str, Any]],
-                             query_strategy: str = "Standard") -> str:
-    """Legacy function for backward compatibility."""
-    return synthesize_answer_enhanced(question, retrieved_chunks, query_strategy)
-
 # ============================================================
 # CLEANUP AND INITIALIZATION
 # ============================================================
@@ -1361,38 +1070,30 @@ __all__ = [
     'get_performance_metrics_enhanced', 'get_performance_metrics',
     'get_system_health_enhanced', 'get_system_health',
     'debug_query_processing_enhanced', 'debug_query_processing',
-    
+
     # Optimization classes
-    'SmartChunkCache', 'SmartEmbeddingCache', 'ConnectionPool',
+    'SmartChunkCache', 'SmartEmbeddingCache', 'AsyncConnectionPool',
     'EnhancedSmartCache',
-    
+
     # Core functions
     'call_gemini_enhanced', 'call_gemini',
-    'correct_query_enhanced', 'correct_query',
-    'generate_multiqueries_enhanced', 'generate_multiqueries',
-    'synthesize_answer_enhanced', 'synthesize_answer_scalable',
-    'get_document_catalog_enhanced', 'get_document_catalog',
-    
+
     # Retrieval functions
-    'enhanced_retrieve', 'simple_retrieve_enhanced',
+    'simple_retrieve_enhanced',
     'get_chunk_by_id_enhanced', 'get_chunk_from_file_enhanced',
-    
+
     # Optimization functions
     'get_optimization_stats', 'clear_all_caches', 'get_cache_health',
     'initialize_optimizations', 'cleanup_optimizations',
-    
+
     # Exceptions
     'GeminiAPIError', 'RetrievalError', 'OptimizationError'
 ]
 
 # Module initialization with optimizations
 initialize_optimizations()
-logger.info("Enhanced RAG Backend with Optimizations loaded successfully")
-logger.info(f"Features enabled: Progressive={config.PROGRESSIVE_RETRIEVAL_ENABLED}, "
-           f"Sampling={config.SAMPLING_AGGREGATION_ENABLED}, "
-           f"Hybrid={config.HYBRID_SEARCH_ENABLED}")
-logger.info(f"Chunk limits optimized: {config.OPTIMAL_CHUNK_LIMITS}")
-logger.info("Optimization features: Chunk Caching [SUCCESS], Embedding Caching [SUCCESS], Connection Pooling [SUCCESS]")
+logger.info("RAG Backend (Single Strategy) loaded successfully")
+logger.info("Optimization features: Chunk Caching [ON], Embedding Caching [ON], Connection Pooling [ON]")
 
 
 

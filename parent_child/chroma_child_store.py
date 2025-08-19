@@ -46,7 +46,7 @@ class ChromaChildStore:
         return True
 
     def search(self, text_vector: List[float], top_k: int = 6):
-        res = self.col.query(query_embeddings=[text_vector], n_results=top_k, include=["metadatas", "distances", "ids"])
+        res = self.col.query(query_embeddings=[text_vector], n_results=top_k, include=["metadatas", "distances"])
         out: List[Dict[str, Any]] = []
         ids = res.get("ids", [[]])[0]
         dists = res.get("distances", [[]])[0]

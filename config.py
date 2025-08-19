@@ -43,19 +43,6 @@ class Config:
     REQUEST_TIMEOUT: int = 60
     QUERY_MAX_LENGTH: int = 1000
     
-    # Updated Strategy Configuration - Fixed chunk limits
-    OPTIMAL_CHUNK_LIMITS: Dict[str, Tuple[int, int]] = field(default_factory=lambda: {
-        "Standard": (2, 4),           # Fixed: min < max
-        "Analyse": (5, 8),            # Increased for better analysis
-        "Aggregation": (8, 15)        # Unchanged for aggregation
-    })
-    
-    # Strategy mapping from LLM intent to actual strategy
-    INTENT_TO_STRATEGY: Dict[str, str] = field(default_factory=lambda: {
-        "Standard": "Standard",       # General business questions
-        "Analyse": "Analyse",         # Analytical questions requiring insights
-        "Aggregation": "Aggregation"  # Counting/listing queries
-    })
     
     CONFIDENCE_THRESHOLDS: Dict[str, float] = field(default_factory=lambda: {
         "HIGH": 0.9,
@@ -87,8 +74,8 @@ class Config:
     # BM25 Parameters
     BM25_K1: float = 1.2
     BM25_B: float = 0.75
-    HYBRID_ALPHA: float = 0.6  # Changed from 0.7 to 0.6 (Dense: 60%, Sparse: 40%)
-    
+    HYBRID_ALPHA: float = 0.5  # Changed from 0.7 to 0.5 (Dense: 50%, Sparse: 50%)
+
     # Sampling Parameters
     AGGREGATION_SAMPLING_THRESHOLD: int = 8
     SAMPLE_SIZE_TARGET: int = 6
@@ -97,6 +84,20 @@ class Config:
     # Zero-shot Classification
     ZERO_SHOT_MODEL: str = "facebook/bart-large-mnli"
     CLASSIFICATION_CONFIDENCE_THRESHOLD: float = 0.6
+
+    # Single-strategy settings (kept minimal for current pipeline)
+    OPTIMAL_CHUNK_LIMITS: Dict[str, Tuple[int, int]] = field(
+        default_factory=lambda: {
+            # For the consolidated retrieval strategy, keep a modest, cost-aware window
+            "Single": (2, 6)
+        }
+    )
+    INTENT_TO_STRATEGY: Dict[str, str] = field(
+        default_factory=lambda: {
+            # All intents map to the single strategy in the simplified backend
+            "default": "Single"
+        }
+    )
     
     def __post_init__(self):
         """Validate configuration after initialization."""
