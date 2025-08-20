@@ -13,7 +13,7 @@ import asyncio
 
 # Import your existing modules
 from api_server import (
-    app, embeddings, logger, validate_and_sanitize_query, 
+    app, logger, validate_and_sanitize_query,
     format_chunks_for_ui, format_ai_response, rag_query_enhanced
 )
 
@@ -39,10 +39,7 @@ def search_stream():
                 yield f"data: {json.dumps({'error': 'Invalid query'})}\n\n"
                 return
             
-            # Check if embeddings are loaded
-            if embeddings is None:
-                yield f"data: {json.dumps({'error': 'Embeddings not loaded'})}\n\n"
-                return
+            # Offline mode: no embeddings check
             
             logger.info(f"[STREAM] Starting streaming search for: {sanitized_query}")
             
@@ -54,7 +51,6 @@ def search_stream():
                 # For now, let's call the existing function and extract chunks
                 result = asyncio.run(rag_query_enhanced(
                     question=sanitized_query,
-                    embeddings=embeddings,
                     topn=10,
                     filters=None,
                     enable_reranking=True,
@@ -101,54 +97,7 @@ def search_stream():
                 logger.error(f"[STREAM] RAG search failed: {rag_error}")
                 logger.error(traceback.format_exc())
                 
-                # Fall back to simple txtai search
-                logger.info("[STREAM] Falling back to simple search...")
-                try:
-                    simple_results = embeddings.search(sanitized_query, limit=10)
-                    
-                    # Create simple chunks from txtai results
-                    simple_chunks = []
-                    for i, result in enumerate(simple_results):
-                        if isinstance(result, tuple) and len(result) >= 2:
-                            text, score = result[0], result[1]
-                            chunk = {
-                                'chunk_id': f'simple_{i}',
-                                'text': text,
-                                'chunk_text': text,
-                                'document_name': f'Document_{i+1}.pdf',
-                                'score': score
-                            }
-                            simple_chunks.append(chunk)
-                        elif isinstance(result, str):
-                            chunk = {
-                                'chunk_id': f'simple_{i}',
-                                'text': result,
-                                'chunk_text': result,
-                                'document_name': f'Document_{i+1}.pdf',
-                                'score': 0.0
-                            }
-                            simple_chunks.append(chunk)
-                    
-                    # Format chunks for UI and send
-                    documents = format_chunks_for_ui(simple_chunks)
-                    yield f"data: {json.dumps({'type': 'chunks', 'data': {'documents': documents}})}\n\n"
-                    
-                    # Create simple AI response
-                    if documents:
-                        context_text = '\n\n'.join([chunk.get('text', '')[:200] for chunk in simple_chunks[:3]])
-                        simple_answer = f"Based on the search for '{sanitized_query}', I found {len(documents)} relevant documents. Here's a summary:\n\n{context_text[:500]}..."
-                    else:
-                        simple_answer = f"I searched for '{sanitized_query}' but couldn't find relevant documents."
-                    
-                    # Use proper formatting function
-                    ai_response = format_ai_response(simple_answer)
-                    
-                    yield f"data: {json.dumps({'type': 'answer', 'data': {'aiResponse': ai_response}})}\n\n"
-                    yield f"data: {json.dumps({'type': 'complete', 'data': {'status': 'success', 'method': 'fallback'}})}\n\n"
-                    
-                except Exception as fallback_error:
-                    logger.error(f"[STREAM] Fallback search also failed: {fallback_error}")
-                    yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(fallback_error)}})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(rag_error)}})}\n\n"
         
         except Exception as e:
             logger.error(f"[STREAM] Streaming search failed completely: {e}")

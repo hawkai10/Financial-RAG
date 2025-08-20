@@ -7,9 +7,6 @@ An enterprise-grade Retrieval-Augmented Generation (RAG) system specifically des
 ### Core Capabilities
 - **Hierarchical Map-Reduce Processing**: Divides large queries into manageable batches
 - **Strategy-Aware Processing**: Optimized handling for Standard, Analysis, and Aggregation queries
-- **Token-Aware Context Management**: Smart truncation that preserves complete information
-- **Parallel Batch Processing**: 2-3x speed improvement for large datasets
-- **Advanced Conflict Detection**: Fuzzy matching to identify contradictory information
 - **Memory-Optimized Operations**: 60% reduction in memory usage
 
 ### Advanced Features
@@ -39,6 +36,18 @@ Chunk Retrieval & Relevance Scoring
     ↓
 Hierarchical Decision (>8 chunks?)
     ↓ YES                          ↓ NO
+Offline-first config is supported. See `.env.example` and copy to `.env`.
+
+Key envs:
+- FORCE_LOCAL_EMBEDDER=true to avoid network downloads and use local `local_models/`.
+- ENSEMBLE_ENCODERS and EMBEDDER_PATHS to enable dual-model retrieval. If `ENSEMBLE_COLLECTIONS` is not set, retrieval auto-uses per-model collections named `children_<slug(encoder)>`, matching ingestion defaults.
+- CHILD_VECTOR_BACKEND=chroma and optionally CHROMA_CHILD_PERSIST_DIR to pin the Chroma path.
+- Optional CROSS_ENCODER_PATH to enable local cross-encoder reranking with a 512-token cap.
+
+Quick smoke test:
+1) Prepare `New folder/` JSONs (extraction output).
+2) Run `python scripts/pc_retrieval_smoke.py --files "New folder/<your>.json"` to ingest and query without LLM.
+3) Start the API via `python api_server.py` and query `/search`.
 Batch Creation                Standard Processing
 (Strategy-Aware)                     ↓
     ↓                          Direct LLM Call
@@ -55,7 +64,7 @@ Final Answer
 
 - **Backend**: Python 3.10+ with Flask
 - **AI Integration**: Google Gemini API
-- **Vector Database**: txtai embeddings
+- **Vector Store**: Chroma (default) or Qdrant; optional PGVector
 - **Frontend**: React 18 + TypeScript + Vite
 - **Document Processing**: Custom chunking and indexing pipeline
 

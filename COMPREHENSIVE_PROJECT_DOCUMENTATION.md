@@ -22,10 +22,10 @@
 **Purpose**: Enterprise document search and AI-powered question answering system with real-time streaming interface
 
 ### Technology Stack
-- **Backend**: Python 3.10+ with Flask, txtai embeddings, cross-encoder reranking
+- **Backend**: Python 3.10+ with Flask, dual-encoder retrieval, optional cross-encoder reranking
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
 - **AI Integration**: Google Gemini API for answer generation
-- **Vector Database**: txtai embeddings with similarity search
+- **Vector Store**: Chroma (default) or Qdrant; optional PGVector
 - **Document Processing**: Custom chunking and indexing pipeline
 - **Authentication**: None (internal use)
 - **Deployment**: Development mode (localhost)
@@ -85,9 +85,8 @@ docling/
                                             │
                                             ▼
                                    ┌─────────────────┐
-                                   │   txtai Vector  │
-                                   │   Database      │
-                                   │   (Embeddings)  │
+                                   │   Vector Store  │
+                                   │ (Chroma/Qdrant) │
                                    └─────────────────┘
 ```
 
@@ -117,7 +116,7 @@ User Query → Query Classification → Document Retrieval → Reranking → Con
      │              │                       │       └──────────────┘
      │              │                       ▼
      │              │                ┌──────────────┐
-     │              │                │   txtai      │
+  │              │                │   Vector     │
      │              │                │   Vector     │
      │              │                │   Search     │
      │              │                └──────────────┘
@@ -289,7 +288,7 @@ CORS(app)  # Enable cross-origin requests
 embeddings = None
 
 def initialize_embeddings():
-    """Load txtai embeddings from index"""
+  """(Deprecated) txtai example (no longer used)"""
     global embeddings
     try:
         embeddings = Embeddings()
@@ -795,7 +794,7 @@ PDF Documents → Text Extraction → Chunking → Embedding Generation → Vect
      │               │              │              │                        │
      │               │              │              │                        ▼
      │               │              │              │              ┌─────────────────┐
-     │               │              │              │              │   txtai Index   │
+  │               │              │              │              │   Vector Store  │
      │               │              │              │              │   (Embeddings)  │
      │               │              │              │              └─────────────────┘
      │               │              │              ▼
@@ -1074,7 +1073,7 @@ venv\Scripts\activate
 
 # 2. Verify Python dependencies
 pip list | findstr flask
-pip list | findstr txtai
+pip list | findstr chroma
 
 # 3. Check for missing dependencies
 pip install -r requirements.txt
@@ -1104,7 +1103,7 @@ python -u api_server.py
 **Debug Steps**:
 ```python
 # Test embedding loading directly
-from txtai import Embeddings
+# from txtai import Embeddings  # deprecated
 embeddings = Embeddings()
 try:
     embeddings.load("business-docs-index")
@@ -1117,7 +1116,7 @@ except Exception as e:
 - Rebuild embeddings index
 - Check index path in configuration
 - Verify document files exist in source directory
-- Update txtai version: `pip install --upgrade txtai`
+- Update Chroma version: `pip install --upgrade chromadb`
 
 ### 2. Frontend Issues
 

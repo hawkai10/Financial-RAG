@@ -10,7 +10,6 @@ import asyncio
 import aiohttp
 import aiosqlite
 
-from txtai import Embeddings
 from rank_bm25 import BM25Okapi
 
 # Import configurations and utilities
@@ -461,7 +460,7 @@ async def call_gemini_enhanced(prompt: str, **kwargs) -> str:
         logger.error(f"Enhanced Gemini call failed: {e}")
         raise GeminiAPIError(f"API call failed: {e}")
 
-async def get_chunk_by_id_enhanced(embeddings: Embeddings, uid: str) -> Dict[str, Any]:
+async def get_chunk_by_id_enhanced(uid: str) -> Dict[str, Any]:
     """Enhanced chunk retrieval with connection pooling and caching (DB first, then JSON)."""
     
     # Try smart cache first (fastest)
@@ -527,61 +526,7 @@ def get_chunk_from_file_enhanced(uid: str) -> Dict[str, Any]:
         logger.error(f"Failed to retrieve chunk {uid} from JSON index: {e}", exc_info=True)
         return {"error": f"Failed to retrieve chunk {uid}", "details": str(e)}
 
-async def simple_retrieve_enhanced(embeddings: Embeddings, queries: List[str], topn: int = 5,
-                           filters: Optional[Dict] = None,
-                           strategy: str = "Standard") -> Tuple[List[Tuple[str, Dict[str, Any]]], Dict[str, Any]]:
-    """Enhanced traditional retrieval function with better error handling."""
-    try:
-        all_uids = set()
-        
-        for query_idx, query in enumerate(queries):
-            try:
-                # This part remains synchronous as txtai search is not async
-                results = embeddings.search(query, limit=topn)
-                
-                for rank, result in enumerate(results):
-                    if isinstance(result, dict):
-                        uid = result.get("id") or result.get("uid") or str(result)
-                    elif isinstance(result, (list, tuple)) and len(result) > 0:
-                        uid = result[0]
-                    else:
-                        uid = str(result)
-                    
-                    if uid:
-                        all_uids.add(uid)
-                        
-            except Exception as e:
-                logger.warning(f"Search failed for query '{query}': {e}")
-                continue
-        
-        # Concurrently retrieve all unique chunks
-        chunk_tasks = [get_chunk_by_id_enhanced(embeddings, uid) for uid in all_uids]
-        retrieved_chunks = await asyncio.gather(*chunk_tasks)
-
-        # Convert UIDs to chunk data with scores
-        chunk_results = []
-        for chunk in retrieved_chunks:
-            if chunk and not chunk.get("error"):
-                uid = chunk.get("chunk_id")
-                score_info = {
-                    "retrieval_score": 0.8,  # Default score
-                    "strategy": strategy
-                }
-                chunk_results.append((uid, score_info))
-
-        retrieval_info = {
-            "method": "simple_enhanced",
-            "total_queries": len(queries),
-            "successful_queries": len([q for q in queries if q]),
-            "total_chunks": len(chunk_results),
-            "strategy": strategy
-        }
-        
-        return chunk_results, retrieval_info
-        
-    except Exception as e:
-        logger.error(f"Enhanced retrieval failed: {e}")
-        raise RetrievalError(f"Retrieval failed: {e}")
+## simple_retrieve_enhanced removed to eliminate txtai dependency.
 
 # Note: enhanced_retrieve removed to simplify to single-strategy path.
 
@@ -617,43 +562,215 @@ async def _hybrid_child_first_parent_aggregation(*args, **kwargs):
 
 
 async def _retrieve_children_hybrid(query: str, max_children: int = 24) -> Tuple[List[Dict[str, Any]], Dict[str, int], List[str]]:
-    """Return child chunks with merged dense+sparse score, a child->parent mapping, and related queries."""
-    from parent_child.retriever import ParentContextRetriever
+    """Return child chunks with merged dense+sparse score, a child->parent mapping, and related queries.
+
+    Dense retrieval supports an optional multi-encoder ensemble controlled via env:
+      - ENSEMBLE_ENCODERS: comma-separated SentenceTransformer model names
+      - ENSEMBLE_COLLECTIONS: comma-separated collection names (Chroma/Qdrant)
+      - ENSEMBLE_TABLES: comma-separated table names (pgvector)
+      - ENSEMBLE_FUSION: 'rrf' or 'avg' (default: 'avg')
+
+    Falls back to a single encoder/index when ENSEMBLE_ENCODERS is not set.
+    """
     from parent_child.vector_store_factory import get_child_vector_store
 
     corrected, sims = await _normalize_query_with_llm(query)
     queries = [corrected] + sims
 
-    retriever = ParentContextRetriever()
-    vec = get_child_vector_store()
-    embedder = retriever.embedder
+    # Always use dual encoders: BAAI + GTE with RRF fusion
+    emb_names = ["BAAI/bge-small-en-v1.5", "thenlper/gte-small"]
+    from pathlib import Path as _RBPath
+    _proj_root = _RBPath(__file__).resolve().parent
+    local_paths = [
+        str(_proj_root / "local_models" / "BAAI-bge-small-en-v1.5"),
+        str(_proj_root / "local_models" / "thenlper-gte-small"),
+    ]
+    fusion = "rrf"
+    collections = []
+    tables = []
 
-    dense_hits: List[Dict[str, Any]] = []
-    for q in queries:
-        try:
-            qv = embedder.encode(q).tolist()
-            res = vec.search(qv, top_k=max_children)
-            for r in res:
-                r["query"] = q
-            dense_hits.extend(res)
-        except Exception:
-            continue
+    ensemble: List[Dict[str, Any]] = []
 
-    # Build corpus for BM25 over candidate child snippets
-    child_docs: Dict[str, str] = {}
-    child_parent: Dict[str, int] = {}
-    for h in dense_hits:
-        payload = h.get("payload", {})
-        cid = str(payload.get("child_id") or h.get("child_id"))
-        snippet = payload.get("snippet") or ""
-        if not cid:
-            continue
+    # Helper to derive stable default collection names when not provided (must match ingestion)
+    def _default_coll(name: str) -> str:
+        import re
+        slug = re.sub(r'[^a-z0-9]+', '_', str(name).lower()).strip('_')
+        return f"children_{slug}"
+    # Build embedders and vector stores for both models
+    try:
+        if os.getenv('FORCE_LOCAL_EMBEDDER', 'false').lower() != 'true':
+            from sentence_transformers import SentenceTransformer  # type: ignore
+        else:
+            raise ImportError("Forced local embedder")
+    except ImportError:
+        # Import our local wrapper instead
+        import sys
+        from pathlib import Path as _PathLocal
+        sys.path.insert(0, str(_PathLocal(__file__).resolve().parent))
+        from local_embedder import SentenceTransformerWrapper as SentenceTransformer  # type: ignore
+    from pathlib import Path as _Path
+    force_local = os.getenv('FORCE_LOCAL_EMBEDDER', 'false').lower() == 'true'
+    for i, m in enumerate(emb_names):
         try:
-            child_parent[cid] = int(payload.get("parent_id"))
+            target = None
+            if i < len(local_paths) and local_paths[i] and _Path(local_paths[i]).exists():
+                target = local_paths[i]
+            else:
+                target = m
+            if force_local:
+                from local_embedder import SentenceTransformerWrapper as _STW  # type: ignore
+                embedder = _STW(target)
+            else:
+                try:
+                    embedder = SentenceTransformer(target)
+                except Exception:
+                    from local_embedder import SentenceTransformerWrapper as _STW  # type: ignore
+                    embedder = _STW(target)
+        except Exception as e:
+            logger.warning(f"Failed to load embedder '{m}': {e}; skipping")
+            continue
+        # Use per-model collections matching ingestion defaults
+        coll = _default_coll(m)
+        vec = get_child_vector_store(collection=coll, table=None)
+        # Diagnostic: log vector store config if available (best effort)
+        try:
+            backend = os.getenv("CHILD_VECTOR_BACKEND", "chroma").lower()
+            if hasattr(vec, "collection_name") and hasattr(vec, "persist_dir"):
+                size = vec.count() if hasattr(vec, "count") else "n/a"
+                logger.info(
+                    f"[retrieval] backend={backend}, collection={getattr(vec, 'collection_name', '?')} (model={m}), persist_dir={getattr(vec, 'persist_dir', '?')}, count={size}"
+                )
         except Exception:
             pass
-        if snippet and cid not in child_docs:
-            child_docs[cid] = snippet
+        ensemble.append({"name": m, "embedder": embedder, "vec": vec})
+    if not ensemble:
+        raise RuntimeError("Dual-encoder retrieval not available: failed to initialize BAAI/GTE embedders or vector stores.")
+
+    # Collect per-list results for fusion
+    # lists: List[List[Dict]] over all (query,encoder) pairs preserving rank order
+    ranked_lists: List[List[Dict[str, Any]]] = []
+    candidate_payloads: Dict[str, Dict[str, Any]] = {}  # cid -> example hit with payload
+
+    use_mv = (os.getenv("CHILD_USE_MULTIVECTOR", "false").lower() == "true")
+    if use_mv:
+        try:
+            from parent_child.multivector_store import MultiVectorChildStore
+            mv = MultiVectorChildStore()
+            for q in queries:
+                res = mv.search_aggregate(q, top_k_children=max_children)
+                for rank_idx, r in enumerate(res):
+                    r["query"] = q
+                    r["encoder"] = "multivector"
+                    r["rank"] = rank_idx + 1
+                ranked_lists.append(res)
+                for r in res:
+                    # child_id is returned directly by ChromaChildStore, not in payload  
+                    cid = str(r.get("child_id") or "")
+                    if not cid:
+                        continue
+                    if cid not in candidate_payloads:
+                        candidate_payloads[cid] = r
+        except Exception as e:
+            logger.warning(f"Multi-vector retrieval disabled due to error: {e}")
+
+    # Always also include standard dense retrieval (ensemble or single encoder)
+    for q in queries:
+        for member in ensemble:
+            try:
+                # Get a 1D embedding for the single query, regardless of backend
+                import numpy as _np
+                qv_any = member["embedder"].encode(q, convert_to_numpy=True)
+                # SentenceTransformers returns (d,) for str; our local wrapper returns (1,d)
+                if isinstance(qv_any, _np.ndarray):
+                    if qv_any.ndim == 2:
+                        qv_any = qv_any[0]
+                    qv = qv_any.astype(float).tolist()
+                else:
+                    # Fallback if some backend returns list/torch tensor
+                    try:
+                        # If it looks like [[...]], take first row
+                        if qv_any and isinstance(qv_any[0], (list, tuple)):
+                            qv_any = qv_any[0]
+                        qv = list(map(float, list(qv_any)))
+                    except Exception:
+                        # Last resort: re-encode ensuring numpy
+                        qv2 = member["embedder"].encode(q, convert_to_numpy=True)
+                        if isinstance(qv2, _np.ndarray) and qv2.ndim == 2:
+                            qv2 = qv2[0]
+                        qv = (qv2 if isinstance(qv2, list) else qv2.tolist())  # type: ignore
+                res = member["vec"].search(qv, top_k=max_children)
+                for rank_idx, r in enumerate(res):
+                    r["query"] = q
+                    r["encoder"] = member["name"]
+                    r["rank"] = rank_idx + 1
+                ranked_lists.append(res)
+                for r in res:
+                    # child_id is returned directly by ChromaChildStore, not in payload
+                    cid = str(r.get("child_id") or "")
+                    if not cid:
+                        continue
+                    if cid not in candidate_payloads:
+                        candidate_payloads[cid] = r
+            except Exception as e:
+                logger.warning(f"Dense search failed for encoder '{member['name']}' on query variant: {e}")
+                continue
+
+    # If nothing retrieved, hard error (must ingest dual per-model collections first)
+    if not ranked_lists:
+        raise RuntimeError("No child hits from dual-encoder retrieval. Ensure ingestion populated per-model collections children_baai_bge_small_en_v1_5 and children_thenlper_gte_small.")
+
+    # Fusion across all ranked lists
+    combined_dense: Dict[str, float] = {}
+    if fusion == "rrf":
+        k_rrf = int(os.getenv("ENSEMBLE_RRF_K", "60"))
+        for lst in ranked_lists:
+            for r in lst:
+                # child_id is returned directly by ChromaChildStore, not in payload
+                cid = str(r.get("child_id") or "")
+                if not cid:
+                    continue
+                rank = int(r.get("rank", 1))
+                combined_dense[cid] = combined_dense.get(cid, 0.0) + 1.0 / (k_rrf + rank)
+    else:
+        # average of per-list min-max normalized scores
+        for lst in ranked_lists:
+            # extract scores
+            scores = [float(x.get("score", 0.0) or 0.0) for x in lst]
+            if not scores:
+                continue
+            mn, mx = min(scores), max(scores)
+            for x, s in zip(lst, scores):
+                # child_id is returned directly by ChromaChildStore, not in payload
+                cid = str(x.get("child_id") or "")
+                if not cid:
+                    continue
+                if mx > mn:
+                    norm = (s - mn) / (mx - mn)
+                else:
+                    norm = 0.0
+                combined_dense[cid] = combined_dense.get(cid, 0.0) + norm
+        # average over number of lists
+        nlists = float(len(ranked_lists))
+        if nlists > 0:
+            for cid in list(combined_dense.keys()):
+                combined_dense[cid] /= nlists
+
+    # Build corpus for BM25 over candidate child snippets (optionally include LLM context)
+    child_docs: Dict[str, str] = {}
+    child_parent: Dict[str, int] = {}
+    for cid, rhit in candidate_payloads.items():
+        payload = rhit.get("payload", {}) or {}
+        snippet = payload.get("snippet") or ""
+        ctx_extra = payload.get("context") or ""
+        text_for_bm25 = (snippet + "\n" + ctx_extra).strip() if ctx_extra else snippet
+        if text_for_bm25 and cid not in child_docs:
+            child_docs[cid] = text_for_bm25
+        try:
+            pid = int(payload.get("parent_id")) if payload.get("parent_id") is not None else None
+            if pid is not None:
+                child_parent[cid] = pid
+        except Exception:
+            pass
 
     corpus_ids = list(child_docs.keys())
     corpus_texts = [child_docs[cid] for cid in corpus_ids]
@@ -674,17 +791,34 @@ async def _retrieve_children_hybrid(query: str, max_children: int = 24) -> Tuple
 
     # Merge dense + sparse
     child_score_map: Dict[str, float] = {}
-    for h in dense_hits:
-        cid = str(h.get("payload",{}).get("child_id") or h.get("child_id"))
-        if not cid:
-            continue
-        dense_score = float(h.get("score", 0.0))
+    for cid, dscore in combined_dense.items():
         sparse_score = bm25_scores.get(cid, 0.0)
         norm_sparse = sparse_score / (len(corpus_texts) or 1)
-        child_score_map[cid] = max(child_score_map.get(cid, 0.0), dense_score + norm_sparse)
+        child_score_map[cid] = dscore + norm_sparse
 
     # Build deduped child chunks
     ranked = sorted(child_score_map.items(), key=lambda it: it[1], reverse=True)[:max_children]
+
+    # Diagnostics: pre-rerank hit@k based on substring expectation (optional)
+    try:
+        expect = os.getenv("HITK_EXPECT_CONTAINS", "").strip()
+        k_val = int(os.getenv("HITK_K", "10"))
+        hit_at_k = None
+        matched_id = None
+        if expect:
+            top_ids = [cid for cid, _ in ranked[:k_val]]
+            for cid in top_ids:
+                txt = child_docs.get(cid, "")
+                if expect.lower() in txt.lower():
+                    hit_at_k = True
+                    matched_id = cid
+                    break
+            if hit_at_k is None:
+                hit_at_k = False
+        if hit_at_k is not None:
+            logger.info(f"[metrics] pre-rerank hit@{k_val}={'YES' if hit_at_k else 'NO'} expect='{expect}' matched_id={matched_id}")
+    except Exception:
+        pass
     child_chunks: List[Dict[str, Any]] = []
     for cid, score in ranked:
         snippet = child_docs.get(cid, "")
@@ -729,7 +863,7 @@ async def synthesize_answer_simple(question: str, parent_chunks: List[Dict[str, 
         return "I couldn't generate an answer at this time."
 
 
-async def execute_single_strategy(question: str, embeddings: Embeddings, top_children: int = 24, top_parents: int = 3) -> Dict[str, Any]:
+async def execute_single_strategy(question: str, top_children: int = 24, top_parents: int = 3) -> Dict[str, Any]:
     """End-to-end: normalize -> hybrid child retrieve -> dedup -> rerank -> pick top-3 children -> parents -> answer."""
     start_time = time.time()
     # 1) Children via hybrid
@@ -834,7 +968,7 @@ async def execute_single_strategy(question: str, embeddings: Embeddings, top_chi
     }
 
 @smart_cache.cache_query_result(ttl_hours=1)
-async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 5,
+async def rag_query_enhanced(question: str, topn: int = 5,
                       filters: Optional[Dict] = None, enable_reranking: bool = True,
                       session_id: str = None, enable_optimization: bool = True) -> Dict[str, Any]:
     """Single-strategy RAG pipeline: normalize -> hybrid children -> rerank -> parents -> LLM."""
@@ -843,8 +977,11 @@ async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 
     
     try:
         # Always use the single strategy
-        return await execute_single_strategy(question, embeddings, top_children=max(topn*3, 24), top_parents=3)
-            
+        return await execute_single_strategy(
+            question,
+            top_children=max(topn * 3, 24),
+            top_parents=3,
+        )
     except Exception as e:
         logger.error(f"RAG query failed: {e}")
         return {
@@ -852,7 +989,7 @@ async def rag_query_enhanced(question: str, embeddings: Embeddings, topn: int = 
             "chunks": [],
             "strategy": "Error",
             "success": False,
-            "processing_time": time.time() - start_time
+            "processing_time": time.time() - start_time,
         }
 
 def get_optimization_stats():
@@ -993,7 +1130,7 @@ async def get_system_health_enhanced() -> Dict[str, Any]:
         logger.error(f"Enhanced system health check failed: {e}")
         return {"error": str(e), "status": "unhealthy"}
 
-async def debug_query_processing_enhanced(question: str, embeddings: Embeddings) -> Dict[str, Any]:
+async def debug_query_processing_enhanced(question: str) -> Dict[str, Any]:
     """Enhanced debug information for query processing with optimization details."""
     try:
         debug_info = {
@@ -1005,7 +1142,7 @@ async def debug_query_processing_enhanced(question: str, embeddings: Embeddings)
         
         # Test query processing pipeline
         try:
-            result = await rag_query_enhanced(question, embeddings, topn=3, enable_optimization=True)
+            result = await rag_query_enhanced(question, topn=3, enable_optimization=True)
             debug_info['processing_result'] = {
                 'success': True,
                 'processing_time': result.get('processing_time', 0),
@@ -1079,7 +1216,6 @@ __all__ = [
     'call_gemini_enhanced', 'call_gemini',
 
     # Retrieval functions
-    'simple_retrieve_enhanced',
     'get_chunk_by_id_enhanced', 'get_chunk_from_file_enhanced',
 
     # Optimization functions

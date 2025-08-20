@@ -5,6 +5,8 @@ Implements cross-encoder based reranking with improved models and score handling
 """
 
 import logging
+import os
+from pathlib import Path
 import numpy as np
 from typing import List, Dict, Tuple, Any, Optional
 from utils import sanitize_for_json
@@ -18,27 +20,61 @@ class EnhancedDocumentReranker:
     """
     
     def __init__(self, model_name: str = None):
-        """Initialize the reranker with improved cross-encoder model."""
+        """Initialize the reranker with improved cross-encoder model.
+        Enforces local model usage only (no remote fallback)."""
         self.cross_encoder = None
         self.has_cross_encoder = False
-        self.model_name = model_name or "cross-encoder/ms-marco-MiniLM-L-12-v2"  # Upgraded model
+        # Default to the requested model; can be overridden via CROSS_ENCODER_MODEL
+        self.model_name = model_name or os.getenv("CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
         self._tested_model = False
-        
+
+        # Try to import CrossEncoder (required even for local load)
         try:
-            from sentence_transformers import CrossEncoder
-            logger.info(f"Loading cross-encoder model: {self.model_name}")
-            self.cross_encoder = CrossEncoder(self.model_name)
+            from sentence_transformers import CrossEncoder  # type: ignore
+        except ImportError as e:
+            logger.warning("sentence-transformers not available; cross-encoder reranking disabled")
+            self.has_cross_encoder = False
+            return
+
+        # Only allow local paths; do NOT attempt remote model fetch
+        local_env = os.getenv("CROSS_ENCODER_PATH", "").strip()
+        default_local = Path(__file__).resolve().parent / "local_models" / "cross-encoder-ms-marco-MiniLM-L-6-v2"
+        load_target: Optional[str] = None
+        if local_env and Path(local_env).exists():
+            load_target = local_env
+            logger.info(f"Loading cross-encoder from local path: {local_env} (max_length=512)")
+        elif default_local.exists():
+            load_target = str(default_local)
+            logger.info(f"Loading cross-encoder from default local path: {default_local} (max_length=512)")
+        else:
+            logger.warning(
+                "Local cross-encoder not found. Please run download_cross_encoder.py or set CROSS_ENCODER_PATH. "
+                "Reranking will be skipped."
+            )
+            self.has_cross_encoder = False
+            return
+
+        # Enforce 512-token total cap at the tokenizer level
+        try:
+            try:
+                self.cross_encoder = CrossEncoder(load_target, max_length=512)
+            except TypeError:
+                # Older versions may not accept max_length in constructor; set after init
+                self.cross_encoder = CrossEncoder(load_target)  # type: ignore
+                if hasattr(self.cross_encoder, "max_length"):
+                    setattr(self.cross_encoder, "max_length", 512)
+                if hasattr(self.cross_encoder, "model") and hasattr(self.cross_encoder.model, "max_seq_length"):
+                    try:
+                        self.cross_encoder.model.max_seq_length = 512
+                    except Exception:
+                        pass
             self.has_cross_encoder = True
-            logger.info(f"Cross-encoder reranker loaded successfully: {self.model_name}")
-            
+            logger.info(f"Cross-encoder reranker loaded successfully from {load_target}")
+
             # Test the model with sanity check
             self._test_cross_encoder_sanity()
-            
-        except ImportError as e:
-            logger.error(f"sentence-transformers not available: {e}")
-            self.has_cross_encoder = False
         except Exception as e:
-            logger.warning(f"Failed to load cross-encoder {self.model_name}: {e}. Using fallback scoring.")
+            logger.warning(f"Failed to load local cross-encoder from {load_target}: {e}. Reranking disabled.")
             self.has_cross_encoder = False
     
     def _test_cross_encoder_sanity(self):
@@ -173,19 +209,15 @@ class EnhancedDocumentReranker:
         for i, chunk in enumerate(chunks):
             text = chunk.get("text", "")
             
-            # Clean and prepare text
+            # Clean and prepare text (no manual char trim; rely on tokenizer 512 cap)
             text = text.strip()
             if not text:
                 text = chunk.get("chunk_text", "")
             
-            # Limit text length for cross-encoder (improved model can handle more)
-            if len(text) > 384:  # Increased from 256 for L-12 model
-                text = text[:384] + "..."
-            
-            # Store preview for debugging
+            # Store preview for debugging (short preview only for logs)
             chunk_previews.append(f"Chunk {i}: {text[:50]}...")
             
-            # Format the pair
+            # Format the pair; tokenizer will truncate to <=512 total tokens
             clean_query = query.strip()
             pairs.append([clean_query, text])
         

@@ -6,6 +6,7 @@ import tiktoken
 # Add dotenv for API key loading
 from dotenv import load_dotenv
 import requests
+from tqdm import tqdm
 import json
 import csv
 from typing import List, Dict, Any, Optional
@@ -13,7 +14,6 @@ import re
 import camelot
 import pdfplumber
 import hashlib
-from txtai import Embeddings
 from tqdm import tqdm
 
 # Path to the folder containing source documents - Fixed to use relative path

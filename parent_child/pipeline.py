@@ -1,17 +1,31 @@
 import json
 import os
+import asyncio
 from pathlib import Path
 from typing import List, Dict
 from .parent_child_chunker import ParentChildChunker, ParentChunk, ChildChunk
 from .parent_store import ParentStore
 from .vector_store_factory import get_child_vector_store
+# Optional multi-vector index is imported lazily inside __init__ when enabled
 
 
 class ParentChildPipeline:
     def __init__(self):
         self.chunker = ParentChildChunker()
         self.parents = ParentStore()
+        # Default child store (may not be used directly when indexing per model)
         self.children = get_child_vector_store()
+        # Optional multi-vector store (ColBERT-style). Disabled by default; flip to True to enable in code.
+        self.mv_enabled = False
+        self.children_mv = None
+        if self.mv_enabled:
+            try:
+                from .multivector_store import MultiVectorChildStore  # type: ignore
+                self.children_mv = MultiVectorChildStore()
+            except Exception:
+                # Disable if dependencies are missing or initialization fails
+                self.mv_enabled = False
+                self.children_mv = None
 
     def ingest_extracted_json(self, extraction_json_path: str, document_id: str) -> dict:
         # The Marker chunks JSON may be a list of pages/blocks or list of docs; accept a flat blocks list under 'blocks' too
@@ -35,18 +49,79 @@ class ParentChildPipeline:
         else:
             # last resort, attempt to find nested 'html' or 'content'
             pass
+
         parents = self.chunker.make_parents(blocks, document_id=document_id)
-        children = self.chunker.make_children_with_embeddings(parents)
         self.parents.upsert_parents(parents)
-        self.children.upsert_children(children)
+
+        # Always dual-encoder ingestion (BAAI + GTE) with per-model collections
+        children = self.chunker.make_children(parents)
+
+        # Generate succinct context for each child (improves retrieval); best-effort, does not fail ingestion
+        try:
+            from .api_adapter import call_gemini_enhanced  # type: ignore
+            for c in children:
+                try:
+                    prompt = (
+                        "Please give a short succinct context for the purposes of improving search retrieval of the chunk. "
+                        "Answer only with the succinct context and nothing else.\n\n"
+                        f"<chunk>\n{c.content[:2000]}\n</chunk>"
+                    )
+                    ctx = asyncio.run(call_gemini_enhanced(prompt))
+                    c.context = (ctx or '').strip()[:300] if ctx else None
+                except Exception:
+                    c.context = None
+        except Exception:
+            # LLM unavailable; proceed without contexts
+            pass
+
+        texts = [c.content for c in children]
+
+        # Fixed models and local preferred paths
+        project_root = Path(__file__).resolve().parents[1]
+        model_specs = [
+            ("BAAI/bge-small-en-v1.5", project_root / "local_models" / "BAAI-bge-small-en-v1.5"),
+            ("thenlper/gte-small", project_root / "local_models" / "thenlper-gte-small"),
+        ]
+
+        def _default_coll(name: str) -> str:
+            import re
+            slug = re.sub(r'[^a-z0-9]+', '_', name.lower()).strip('_')
+            return f"children_{slug}"
+
+        # Embed and upsert into each per-model collection
+        for model_name, local_path in model_specs:
+            # Build embedder preferring local path; fallback to model name if needed
+            try:
+                lp = Path(local_path)
+                target = str(lp) if lp.exists() else model_name
+                try:
+                    from sentence_transformers import SentenceTransformer  # type: ignore
+                    model = SentenceTransformer(target)
+                except Exception:
+                    from local_embedder import SentenceTransformerWrapper as _STW  # type: ignore
+                    model = _STW(target)
+            except Exception:
+                # If both load paths fail, skip this model
+                continue
+            coll = _default_coll(model_name)
+            vec = get_child_vector_store(collection=coll)
+            embs = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
+            for idx, vec_np in enumerate(embs):
+                children[idx].embedding = vec_np.tolist()
+            vec.upsert_children(children)
+
+        if self.mv_enabled and self.children_mv:
+            # Upsert child token vectors (best-effort; errors won’t break ingestion)
+            try:
+                self.children_mv.upsert_child_tokens(children)
+            except Exception:
+                pass
+
         # Write JSON log of chunks (excluding embeddings for size)
         try:
-            # Default to project_root/chunk_logs unless CHUNK_LOG_DIR is set
-            if os.getenv('CHUNK_LOG_DIR'):
-                log_dir = os.getenv('CHUNK_LOG_DIR')
-            else:
-                project_root = str(Path(__file__).resolve().parents[1])
-                log_dir = os.path.join(project_root, 'chunk_logs')
+            # Default to project_root/chunk_logs
+            project_root = str(Path(__file__).resolve().parents[1])
+            log_dir = os.path.join(project_root, 'chunk_logs')
             os.makedirs(log_dir, exist_ok=True)
             log_path = os.path.join(log_dir, f"{document_id}_parent_child_chunks.json")
             # Compute token counts

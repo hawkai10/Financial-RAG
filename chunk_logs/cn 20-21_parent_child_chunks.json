@@ -7,7 +7,7 @@
   "children_total_tokens": 291,
   "parents": [
     {
-      "parent_id": 216095931550928896,
+      "parent_id": 216629329071706112,
       "document_id": "cn 20-21",
       "page_start": 764,
       "page_end": 764,
@@ -17,9 +17,9 @@
   ],
   "children": [
     {
-      "child_id": 216095931550928897,
-      "parent_id": 216095931550928896,
-      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) \n Credit Note No Dated \n Chakulia , PO-Chakulia \n 9 \n 11-Mar-21 \n Dist East Singh Bhum \n Mode/Terms of Payment \n GSTNO-20AAIPL4886F1ZQ \n GSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20 \n Original Invoice No & Date Other References \n Consignee (Ship to) \n 130/20.21 dt 18-Feb-21\nBuyer's Order No Shree Vaishnodevi Oil Industries \n Dated \n At-Po-Chakerkend, Dist-Bargarh \n GSTIN/UIN\n: 21ADIFS3392Q1ZI \n Dispatch Doc No State Name\n: Odisha, Code : 21 \n Buyer (Bill to)\nShree Vaishnodevi Oil Industries\nAt-Po-Chakerkend, Dist-Bargarh \n Dispatched through \n Destination \n Terms of Delivery \n GSTIN/UIN\n: 21ADIFS3392Q1ZI \n State Name\n: Odisha, Code : 21\nPlace of Supply\n: Odisha \n Sl \n Description of Goods \n HSN/SAC \n GST \n Quantity \n Rate \n per \n Amount \n No Rate \n 1 \n Bran \n 23022020 \n 5 % \n 1,87,066.50 \n I.G.S.T 9,353.33 \n Round Off \n 0.17 \n Total \n ₹ 1,96,420.00 \n Amount Chargeable (in words) \n E & O.E \n Indian Rupees One Lakh Ninety Six Thousand Four Hundred Twenty Only \n HSN/SAC \n Taxable\nValue \n Rate \n IGST \n Amount \n Total\nTax Amount \n 23022020 \n 1,87,066.50 \n 5% \n 9,353.33 \n 9,353.33 \n Total \n 1,87,066.50 \n 9,353.33 \n 9,353.33 \n Tax Amount (in words) : \n Indian Rupees Nine Thousand Three Hundred Fifty Three and Thirty Three paise Only \n for Bhartiya Enterprises A/c (Yr 19-20) \n Authorised Signatory",
+      "child_id": 216629329155592192,
+      "parent_id": 216629329071706112,
+      "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20)\nCredit Note No.\nDated\nChakulia , PO-Chakulia\n9\n11-Mar-21\nDist East Singh Bhum\nMode/Terms of Payment\nGSTNO-20AAIPL4886F1ZQ\nGSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20\nOriginal Invoice No. & Date.\nOther References\nConsignee (Ship to)\n130/20.21 dt. 18-Feb-21\nBuyer's Order No.\nShree Vaishnodevi Oil Industries\nDated\nAt-Po-Chakerkend, Dist-Bargarh\nGSTIN/UIN\n: 21ADIFS3392Q1ZI\nDispatch Doc No.\nState Name\n: Odisha, Code : 21\nBuyer (Bill to)\nShree Vaishnodevi Oil Industries\nAt-Po-Chakerkend, Dist-Bargarh\nDispatched through\nDestination\nTerms of Delivery\nGSTIN/UIN\n: 21ADIFS3392Q1ZI\nState Name\n: Odisha, Code : 21\nPlace of Supply\n: Odisha\nSl\nDescription of Goods\nHSN/SAC\nGST\nQuantity\nRate\nper\nAmount\nNo.\nRate\n1\nBran\n23022020\n5 %\n1,87,066.50\nI.G.S.T.\n9,353.33\nRound Off\n0.17\nTotal\n₹ 1,96,420.00\nAmount Chargeable (in words)\nE. & O.E\nIndian Rupees One Lakh Ninety Six Thousand Four Hundred Twenty Only\nHSN/SAC\nTaxable\nValue\nRate\nIGST\nAmount\nTotal\nTax Amount\n23022020\n1,87,066.50\n5%\n9,353.33\n9,353.33\nTotal\n1,87,066.50\n9,353.33\n9,353.33\nTax Amount (in words) :\nIndian Rupees Nine Thousand Three Hundred Fifty Three and Thirty Three paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
       "tokens": 291
     }
   ]

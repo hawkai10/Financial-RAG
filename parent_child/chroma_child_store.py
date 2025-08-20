@@ -16,7 +16,17 @@ class ChromaChildStore:
     """
 
     def __init__(self, persist_dir: str | None = None, collection: str | None = None):
-        self.persist_dir = persist_dir or os.getenv("CHROMA_CHILD_PERSIST_DIR", os.path.join(os.getcwd(), ".chroma_children"))
+        # Use a stable default under the project root to avoid CWD-dependent paths
+        if persist_dir:
+            self.persist_dir = persist_dir
+        else:
+            env_dir = os.getenv("CHROMA_CHILD_PERSIST_DIR")
+            if env_dir:
+                self.persist_dir = env_dir
+            else:
+                # Project root = parent of this file's directory (../)
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                self.persist_dir = os.path.join(project_root, ".chroma_children")
         self.collection_name = collection or os.getenv("CHILD_VECTOR_COLLECTION", "parent_child_children")
         os.makedirs(self.persist_dir, exist_ok=True)
         self.client = chromadb.PersistentClient(path=self.persist_dir)
@@ -31,7 +41,11 @@ class ChromaChildStore:
             if not getattr(c, "embedding", None):
                 continue
             ids.append(str(c.child_id))
-            metadatas.append({"parent_id": str(c.parent_id), "snippet": c.content[:256]})
+            # Store full child content as snippet (no truncation)
+            meta = {"parent_id": str(c.parent_id), "snippet": c.content}
+            if getattr(c, "context", None):
+                meta["context"] = c.context
+            metadatas.append(meta)
             embeddings.append(c.embedding)
         if not ids:
             return True
@@ -58,3 +72,9 @@ class ChromaChildStore:
             score = 1.0 - float(dist) if dist is not None else None
             out.append({"score": score, "child_id": ids[i], "payload": meta})
         return out
+
+    def count(self) -> int:
+        try:
+            return int(self.col.count())
+        except Exception:
+            return -1

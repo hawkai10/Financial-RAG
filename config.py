@@ -74,7 +74,7 @@ class Config:
     # BM25 Parameters
     BM25_K1: float = 1.2
     BM25_B: float = 0.75
-    HYBRID_ALPHA: float = 0.5  # Changed from 0.7 to 0.5 (Dense: 50%, Sparse: 50%)
+    HYBRID_ALPHA: float = 0.5  # Changed from 0.7 to 0.6 (Dense: 60%, Sparse: 40%)
 
     # Sampling Parameters
     AGGREGATION_SAMPLING_THRESHOLD: int = 8

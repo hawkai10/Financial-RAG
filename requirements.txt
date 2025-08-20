@@ -11,7 +11,6 @@ aiosqlite>=0.19.0
 aiohttp>=3.8.0
 
 # AI/ML and embeddings
-txtai>=6.0.0
 rank-bm25>=0.2.2
 tiktoken>=0.5.0
 
@@ -249,7 +248,6 @@ torchvision
 tornado
 tqdm
 transformers
-txtai
 typer
 typing_extensions
 typing-inspection

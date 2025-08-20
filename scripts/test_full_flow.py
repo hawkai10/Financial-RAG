@@ -3,8 +3,12 @@ import json
 import asyncio
 from pathlib import Path
 from typing import List, Dict, Any
+import sys
 
-from txtai import Embeddings  # type: ignore
+# Ensure project root is on sys.path for imports when running from scripts/
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from config import config
 import rag_backend as rb
@@ -90,7 +94,7 @@ def build_prompt(question: str, parent_chunks: List[Dict[str, Any]], related_que
     return prompt
 
 
-async def run_one(question: str, embeddings: Embeddings, logs_dir: Path):
+async def run_one(question: str, logs_dir: Path):
     # 1) Retrieve children (includes LLM normalization -> multi-queries)
     child_chunks, child_to_parent, related_queries = await rb._retrieve_children_hybrid(question, max_children=24)  # type: ignore[attr-defined]
 
@@ -197,22 +201,12 @@ async def run_one(question: str, embeddings: Embeddings, logs_dir: Path):
     print(f"✔ Wrote log: {fname}")
 
 
-def init_embeddings() -> Embeddings:
-    emb = Embeddings()
-    if os.path.exists(config.INDEX_PATH):
-        emb.load(config.INDEX_PATH)
-    else:
-        raise RuntimeError(f"txtai index not found at {config.INDEX_PATH}")
-    return emb
-
-
 async def main():
     logs_dir = ensure_logs_dir()
-    embeddings = init_embeddings()
     # Ensure single strategy path is in effect (rag_backend already simplified)
     os.environ["BACKEND_USE_PARENT_CHILD"] = "true"
     for q in QUESTIONS:
-        await run_one(q, embeddings, logs_dir)
+        await run_one(q, logs_dir)
 
 
 if __name__ == "__main__":

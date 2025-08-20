@@ -7,7 +7,7 @@
   "children_total_tokens": 278,
   "parents": [
     {
-      "parent_id": 216095931236356096,
+      "parent_id": 216629310683877376,
       "document_id": "cn 19.20",
       "page_start": 737,
       "page_end": 737,
@@ -17,9 +17,9 @@
   ],
   "children": [
     {
-      "child_id": 216095931236356097,
-      "parent_id": 216095931236356096,
-      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) \n Credit Note No Dated \n Chakulia , PO-Chakulia \n 10 \n 23-Oct-19 \n Dist East Singh Bhum \n Mode/Terms of Payment \n GSTNO-20AAIPL4886F1ZQ \n GSTIN/UIN: 20AAIPL4886F1ZQ \n Original Invoice No & Date Other References \n State Name : Jharkhand, Code : 20 \n 79/19-20 dt 21-Oct-19 \n Consignee (Ship to) \n Buyer's Order No Dated \n Sri Venkta Srinivasa Oils Pvt Ltd \n Rajam \n GSTIN/UIN \n : 37AAOCS7160A1ZA \n State Name \n : Andhra Pradesh, Code : 37 \n Buyer (Bill to) \n Dispatch Doc No Sri Venkta Srinivasa Oils Pvt Ltd \n Dispatched through \n Destination \n Rajam \n GSTIN/UIN \n : 37AAOCS7160A1ZA \n State Name \n : Andhra Pradesh, Code : 37 \n Place of Supply \n : Andhra Pradesh \n Terms of Delivery \n Sl No Description of Goods \n HSN/SAC \n GST Rate \n Quantity \n Rate \n per \n Amount \n 1 \n Bran \n 23022020 \n 5 % \n 49,479.05 \n I.G.S.T 2,473.95 \n Total \n ₹ 51,953.00 \n Amount Chargeable (in words) \n E & O.E \n Indian Rupees Fifty One Thousand Nine Hundred Fifty Three Only \n HSN/SAC \n Taxable Value \n Rate \n IGST Amount \n Total Tax Amount \n 23022020 \n 49,479.05 \n 5% \n 2,473.95 \n 2,473.95 \n Total \n 49,479.05 \n 2,473.95 \n 2,473.95 \n Tax Amount (in words) : Indian Rupees Two Thousand Four Hundred Seventy Three and Ninety Five paise Only \n for Bhartiya Enterprises A/c (Yr 19-20) \n Authorised Signatory",
+      "child_id": 216629310746791936,
+      "parent_id": 216629310683877376,
+      "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20)\nCredit Note No.\nDated\nChakulia , PO-Chakulia\n10\n23-Oct-19\nDist East Singh Bhum\nMode/Terms of Payment\nGSTNO-20AAIPL4886F1ZQ\nGSTIN/UIN: 20AAIPL4886F1ZQ\nOriginal Invoice No. & Date.\nOther References\nState Name : Jharkhand, Code : 20\n79/19-20 dt. 21-Oct-19\nConsignee (Ship to)\nBuyer's Order No.\nDated\nSri Venkta Srinivasa Oils Pvt Ltd\nRajam\nGSTIN/UIN\n: 37AAOCS7160A1ZA\nState Name\n: Andhra Pradesh, Code : 37\nBuyer (Bill to)\nDispatch Doc No.\nSri Venkta Srinivasa Oils Pvt Ltd\nDispatched through\nDestination\nRajam\nGSTIN/UIN\n: 37AAOCS7160A1ZA\nState Name\n: Andhra Pradesh, Code : 37\nPlace of Supply\n: Andhra Pradesh\nTerms of Delivery\nSl No.\nDescription of Goods\nHSN/SAC\nGST Rate\nQuantity\nRate\nper\nAmount\n1\nBran\n23022020\n5 %\n49,479.05\nI.G.S.T.\n2,473.95\nTotal\n₹ 51,953.00\nAmount Chargeable (in words)\nE. & O.E\nIndian Rupees Fifty One Thousand Nine Hundred Fifty Three Only\nHSN/SAC\nTaxable Value\nRate\nIGST Amount\nTotal Tax Amount\n23022020\n49,479.05\n5%\n2,473.95\n2,473.95\nTotal\n49,479.05\n2,473.95\n2,473.95\nTax Amount (in words) : Indian Rupees Two Thousand Four Hundred Seventy Three and Ninety Five paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
       "tokens": 278
     }
   ]

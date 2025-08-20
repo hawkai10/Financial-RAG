@@ -32,7 +32,6 @@ import time
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from typing import Dict, List, Any
-from txtai import Embeddings
 
 # Import your existing RAG functions
 from rag_backend import rag_query_enhanced, call_gemini_enhanced
@@ -69,18 +68,13 @@ if PARENT_CHILD_ONLY:
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
 
-# Global embeddings instance
-embeddings = None
+# No global embeddings (txtai removed)
 # Store generated example queries in memory
 example_queries = []
 
 def generate_example_queries():
     """Generate example queries from random document chunks"""
-    global example_queries, embeddings
-    
-    if embeddings is None:
-        logger.warning("Cannot generate example queries - embeddings not loaded")
-        return
+    global example_queries
     
     try:
         # Get diverse documents/chunks from the embeddings using different search terms
@@ -94,27 +88,10 @@ def generate_example_queries():
         ]
         all_chunks = []
         
-        for sample_query in sample_queries:
-            try:
-                results = embeddings.search(sample_query, limit=20)
-                if results:
-                    all_chunks.extend(results)
-            except Exception as e:
-                logger.warning(f"Search failed for '{sample_query}': {e}")
-                continue
+    # Offline mode: skip txtai sampling
         
         # If specific searches didn't work, try broader terms
-        if not all_chunks:
-            logger.info("Trying broader search terms...")
-            broad_queries = ["document", "information", "text", "content"]
-            for broad_query in broad_queries:
-                try:
-                    results = embeddings.search(broad_query, limit=30)
-                    if results:
-                        all_chunks.extend(results)
-                        break  # Just need one successful search
-                except:
-                    continue
+    # No txtai, leave all_chunks empty to trigger defaults
         
         if not all_chunks:
             logger.warning("No chunks found for example query generation")
@@ -131,13 +108,7 @@ def generate_example_queries():
         seen_texts = set()
         
         for chunk in all_chunks:
-            # txtai returns (text, score) tuples or just text
-            if isinstance(chunk, tuple):
-                text = chunk[0]
-                score = chunk[1] if len(chunk) > 1 else 0
-            else:
-                text = str(chunk)
-                score = 0
+            text = str(chunk)
             
             # Clean and normalize text for comparison
             clean_text = text.strip().lower()
@@ -268,26 +239,8 @@ Question:"""
         return f"What information is provided about {context.lower()}?"
 
 def initialize_embeddings():
-    """Initialize embeddings on startup"""
-    global embeddings
-    try:
-        embeddings = Embeddings()
-        index_path = config.INDEX_PATH
-        
-        if os.path.exists(index_path):
-            embeddings.load(index_path)
-            logger.info(f"[GENERATE] Embeddings loaded from {index_path}")
-            
-            # Generate example queries after loading embeddings
-            generate_example_queries()
-            
-            return True
-        else:
-            logger.error(f"[ERROR] Index not found at {index_path}")
-            return False
-    except Exception as e:
-        logger.error(f"[ERROR] Failed to initialize embeddings: {e}")
-        return False
+    """No-op: txtai embeddings removed."""
+    return False
 
 def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
     """Convert backend chunk format to UI format"""
@@ -492,7 +445,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'embeddings_loaded': embeddings is not None,
+        'embeddings_loaded': False,
         'document_monitoring_active': is_monitoring_active()
     })
 
@@ -522,11 +475,7 @@ def search():
         if not sanitized_query:
             return jsonify({'error': 'Invalid query'}), 400
         
-        # In parent-child mode we don't require txtai embeddings
-        if not PARENT_CHILD_ONLY:
-            # Check if embeddings are loaded
-            if embeddings is None:
-                return jsonify({'error': 'Embeddings not loaded'}), 500
+    # Offline mode: no embeddings check
         
         logger.info(f"[SEARCH] UI Search request: {sanitized_query}")
 
@@ -574,7 +523,6 @@ def search():
                 try:
                     return loop.run_until_complete(rag_query_enhanced(
                         question=sanitized_query,
-                        embeddings=embeddings,
                         topn=10,
                         filters=None,
                         enable_reranking=True,
@@ -637,111 +585,7 @@ def search():
             logger.error(f"[ERROR] Enhanced RAG search failed: {rag_error}")
             logger.error(traceback.format_exc())
             
-            # Fall back to simple txtai search
-            logger.info("[FALLBACK] Falling back to simple txtai search...")
-            try:
-                # Direct txtai search as fallback
-                logger.info(f"[DEBUG] About to search embeddings for: {sanitized_query}")
-                simple_results = embeddings.search(sanitized_query, limit=10)
-                logger.info(f"[DEBUG] Simple txtai search returned {len(simple_results)} results")
-                logger.info(f"First result type: {type(simple_results[0]) if simple_results else 'No results'}")
-                logger.info(f"First result content: {simple_results[0] if simple_results else 'No results'}")
-                
-                # Create simple chunks from txtai results
-                simple_chunks = []
-                logger.info(f"Processing {len(simple_results)} txtai results")
-                
-                for i, result in enumerate(simple_results):
-                    try:
-                        # txtai returns a dictionary with 'text' and score
-                        if isinstance(result, dict):
-                            text = result.get('text', str(result))
-                            score = result.get('score', 0.0)
-                        elif isinstance(result, tuple) and len(result) >= 2:
-                            text, score = result[0], result[1]
-                        elif isinstance(result, str):
-                            text = result
-                            score = 0.0
-                        else:
-                            # Convert whatever it is to string
-                            text = str(result)
-                            score = 0.0
-                        
-                        # Create chunk in expected format
-                        chunk = {
-                            'chunk_id': f'simple_{i}',
-                            'text': text,
-                            'chunk_text': text,
-                            'document_name': f'Document_{i+1}.pdf',
-                            'score': float(score),
-                            'source_file': f'search_result_{i+1}',
-                            'page_number': 1
-                        }
-                        simple_chunks.append(chunk)
-                        logger.info(f"Created chunk {i}: {len(text)} chars, score: {score}")
-                        
-                    except Exception as chunk_error:
-                        logger.error(f"Error processing result {i}: {chunk_error}")
-                        logger.error(f"Result content: {result}")
-                        continue
-                
-                logger.info(f"Created {len(simple_chunks)} simple chunks")
-                
-                # Format chunks for UI
-                documents = format_chunks_for_ui(simple_chunks)
-                
-                # Create simple AI response using proper formatting
-                if documents:
-                    # Extract relevant content and provide a meaningful answer
-                    if "rent" in sanitized_query.lower() and any("rent" in chunk.get('text', '').lower() for chunk in simple_chunks):
-                        # Extract rent-related information
-                        rent_info = []
-                        for chunk in simple_chunks[:5]:
-                            text = chunk.get('text', '')
-                            if 'rent' in text.lower() or 'amount' in text.lower() or 'rs.' in text.lower():
-                                rent_info.append(text)
-                        
-                        if rent_info:
-                            simple_answer = f"Based on the documents, I found information about rent:\n\n"
-                            for i, info in enumerate(rent_info[:3], 1):
-                                simple_answer += f"{i}. {info.strip()}\n\n"
-                            simple_answer += f"\nTotal documents found: {len(documents)}"
-                        else:
-                            simple_answer = f"I found {len(documents)} documents but couldn't extract specific rent information. Please check the document details below."
-                    else:
-                        # General answer for other queries
-                        key_content = []
-                        for chunk in simple_chunks[:3]:
-                            text = chunk.get('text', '').strip()
-                            if text and len(text) > 50:
-                                key_content.append(text[:300])
-                        
-                        simple_answer = f"I found {len(documents)} relevant documents for your query '{sanitized_query}'.\n\n"
-                        if key_content:
-                            simple_answer += "Key findings:\n\n"
-                            for i, content in enumerate(key_content, 1):
-                                simple_answer += f"{i}. {content}...\n\n"
-                        simple_answer += "Please see the document details below for complete information."
-                else:
-                    simple_answer = f"I searched for '{sanitized_query}' but couldn't find relevant documents. This might be because the content isn't indexed or the search terms don't match the available content."
-                
-                # Use the proper formatting function
-                ai_response = format_ai_response(simple_answer)
-                
-                logger.info(f"[SUCCESS] Fallback simple search completed: {len(documents)} documents")
-                
-                return jsonify({
-                    'documents': documents,
-                    'aiResponse': ai_response,
-                    'query': sanitized_query,
-                    'status': 'success',
-                    'method': 'simple_search_fallback'
-                })
-                
-            except Exception as simple_error:
-                logger.error(f"[ERROR] Simple search fallback also failed: {simple_error}")
-                logger.error(traceback.format_exc())
-                return jsonify({'error': f'Both enhanced RAG and simple search failed. RAG: {str(rag_error)}, Simple: {str(simple_error)}'}), 500
+            return jsonify({'error': f'Enhanced RAG search failed: {str(rag_error)}'}), 500
         
     except Exception as e:
         logger.error(f"[ERROR] Search error: {e}")
@@ -835,11 +679,7 @@ def search_stream():
                 yield f"data: {json.dumps({'error': 'Invalid query'})}\n\n"
                 return
             
-            # In parent-child mode we don't require txtai embeddings
-            if not PARENT_CHILD_ONLY:
-                if embeddings is None:
-                    yield f"data: {json.dumps({'error': 'Embeddings not loaded'})}\n\n"
-                    return
+            # Offline mode: no embeddings check
             
             logger.info(f"[STREAM] Starting streaming search for: {sanitized_query}")
             
@@ -884,7 +724,6 @@ def search_stream():
                     try:
                         return loop.run_until_complete(rag_query_enhanced(
                             question=sanitized_query,
-                            embeddings=embeddings,
                             topn=10,
                             filters=None,
                             enable_reranking=True,
@@ -947,62 +786,7 @@ def search_stream():
                 logger.error(f"[STREAM] RAG search failed: {rag_error}")
                 logger.error(traceback.format_exc())
                 
-                # Fall back to simple txtai search
-                logger.info("[STREAM] Falling back to simple search...")
-                try:
-                    simple_results = embeddings.search(sanitized_query, limit=10)
-                    
-                    # Create simple chunks from txtai results
-                    simple_chunks = []
-                    for i, result in enumerate(simple_results):
-                        if isinstance(result, tuple) and len(result) >= 2:
-                            text, score = result[0], result[1]
-                            chunk = {
-                                'chunk_id': f'simple_{i}',
-                                'text': text,
-                                'chunk_text': text,
-                                'document_name': f'Document_{i+1}.pdf',
-                                'score': score
-                            }
-                            simple_chunks.append(chunk)
-                        elif isinstance(result, str):
-                            chunk = {
-                                'chunk_id': f'simple_{i}',
-                                'text': result,
-                                'chunk_text': result,
-                                'document_name': f'Document_{i+1}.pdf',
-                                'score': 0.0
-                            }
-                            simple_chunks.append(chunk)
-                    
-                    # Format chunks for UI and send
-                    documents = format_chunks_for_ui(simple_chunks)
-                    yield f"data: {json.dumps({'type': 'chunks', 'data': {'documents': documents}})}\n\n"
-                    
-                    # Create simple AI response
-                    if documents:
-                        context_text = '\n\n'.join([chunk.get('text', '')[:200] for chunk in simple_chunks[:3]])
-                        simple_answer = f"Based on the search for '{sanitized_query}', I found {len(documents)} relevant documents. Here's a summary:\n\n{context_text[:500]}..."
-                    else:
-                        simple_answer = f"I searched for '{sanitized_query}' but couldn't find relevant documents."
-                    
-                    ai_response = {
-                        'summary': simple_answer,
-                        'items': [
-                            {
-                                'title': 'Fallback Search Results',
-                                'text': simple_answer,
-                                'references': [{'id': i+1, 'docId': doc['id']} for i, doc in enumerate(documents[:5])]
-                            }
-                        ]
-                    }
-                    
-                    yield f"data: {json.dumps({'type': 'answer', 'data': {'aiResponse': ai_response}})}\n\n"
-                    yield f"data: {json.dumps({'type': 'complete', 'data': {'status': 'success', 'method': 'fallback'}})}\n\n"
-                    
-                except Exception as fallback_error:
-                    logger.error(f"[STREAM] Fallback search also failed: {fallback_error}")
-                    yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(fallback_error)}})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(rag_error)}})}\n\n"
         
         except Exception as e:
             logger.error(f"[STREAM] Streaming search failed completely: {e}")
@@ -1033,11 +817,9 @@ if __name__ == '__main__':
         print(f"[WARNING] Could not start background monitoring: {e}")
         print("[INFO] Document changes will need to be processed manually")
     
-    # Initialize embeddings
-    if initialize_embeddings():
-        print("[SUCCESS] Embeddings loaded successfully")
-    else:
-        print("[WARNING] Embeddings not loaded - some features may not work")
+    # No embeddings to initialize
+    initialize_embeddings()
+    print("[INFO] Offline mode: no txtai embeddings initialized")
     
     # Start server
     print("[SERVER] Server starting at http://localhost:5000")

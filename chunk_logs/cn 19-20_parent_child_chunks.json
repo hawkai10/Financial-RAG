@@ -7,7 +7,7 @@
   "children_total_tokens": 283,
   "parents": [
     {
-      "parent_id": 216095930162614272,
+      "parent_id": 216629256153731072,
       "document_id": "cn 19-20",
       "page_start": 787,
       "page_end": 787,
@@ -17,9 +17,9 @@
   ],
   "children": [
     {
-      "child_id": 216095930166808576,
-      "parent_id": 216095930162614272,
-      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) \n Credit Note No 11 \n Dated \n 11-Nov-19 \n Chakulia , PO-Chakulia \n Mode/Terms of Payment \n Dist East Singh Bhum \n GSTNO-20AAIPL4886F1ZQ \n Original Invoice No & Date 34 dt 16-Jun-19 \n Other References \n GSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20 \n Buyer's Order No Dated \n Consignee (Ship to) \n Dispatch Doc No Krishna Prabhash Agro Oil Pvt Ltd \n Mandapeta, Dist East Singh Bhum, GSTNO\n-20AAIPL4886F1ZQ \n Dispatched through \n Destination \n GSTIN/UIN : 37AAICS2638B1ZH\nState Name : Andhra Pradesh, Code : 37 \n Terms of Delivery \n Buyer (Bill to) \n Krishna Prabhash Agro Oil Pvt Ltd\nMandapeta \n GSTIN/UIN : 37AAICS2638B1ZH\nState Name : Andhra Pradesh, Code : 37\nPlace of Supply : Andhra Pradesh \n Sl No Description of Goods \n HSN/SAC \n GST Rate \n Quantity \n Rate \n per \n Amount \n 1 \n Bran\nI.G.S.T Round Off \n 23022020 \n 5 % \n 40,097.00\n2,004.85\n0.15 \n Total \n ₹ 42,102.00\nE & O.E \n Amount Chargeable (in words) \n Indian Rupees Forty Two Thousand One Hundred Two Only \n HSN/SAC \n Taxable Value \n Rate \n IGST Amount \n Total Tax Amount \n 23022020 \n 40,097.00 \n 5% \n 2,004.85 \n 2,004.85 \n Total \n 40,097.00 \n 2,004.85 \n 2,004.85 \n Tax Amount (in words) : \n Indian Rupees Two Thousand Four and Eighty Five paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20) \n Authorised Signatory",
+      "child_id": 216629256208257024,
+      "parent_id": 216629256153731072,
+      "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20)\nCredit Note No.\n11\nDated\n11-Nov-19\nChakulia , PO-Chakulia\nMode/Terms of Payment\nDist East Singh Bhum\nGSTNO-20AAIPL4886F1ZQ\nOriginal Invoice No. & Date.\n34 dt. 16-Jun-19\nOther References\nGSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20\nBuyer's Order No.\nDated\nConsignee (Ship to)\nDispatch Doc No.\nKrishna Prabhash Agro Oil Pvt Ltd\nMandapeta, Dist East Singh Bhum, GSTNO\n-20AAIPL4886F1ZQ\nDispatched through\nDestination\nGSTIN/UIN : 37AAICS2638B1ZH\nState Name : Andhra Pradesh, Code : 37\nTerms of Delivery\nBuyer (Bill to)\nKrishna Prabhash Agro Oil Pvt Ltd\nMandapeta\nGSTIN/UIN : 37AAICS2638B1ZH\nState Name : Andhra Pradesh, Code : 37\nPlace of Supply : Andhra Pradesh\nSl No.\nDescription of Goods\nHSN/SAC\nGST Rate\nQuantity\nRate\nper\nAmount\n1\nBran\nI.G.S.T.\nRound Off\n23022020\n5 %\n40,097.00\n2,004.85\n0.15\nTotal\n₹ 42,102.00\nE. & O.E\nAmount Chargeable (in words)\nIndian Rupees Forty Two Thousand One Hundred Two Only\nHSN/SAC\nTaxable Value\nRate\nIGST Amount\nTotal Tax Amount\n23022020\n40,097.00\n5%\n2,004.85\n2,004.85\nTotal\n40,097.00\n2,004.85\n2,004.85\nTax Amount (in words) :\nIndian Rupees Two Thousand Four and Eighty Five paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
       "tokens": 283
     }
   ]
