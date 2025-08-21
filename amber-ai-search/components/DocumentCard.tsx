@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 import type { DocumentResult } from '../types';
 import { MoreVerticalIcon } from './icons/MoreVerticalIcon';
 import { ChevronDownIcon } from './icons/ChevronDownIcon';
@@ -22,6 +22,9 @@ const DocumentCard = forwardRef<HTMLDivElement, DocumentCardProps>(({ document, 
     missingInfo,
     mustInclude
   } = document;
+
+  // Progressive snippet using visual line clamp: show first 8 lines, reveal +8 per click
+  const [visibleLines, setVisibleLines] = useState<number>(8);
 
   const highlightClass = isHighlighted ? 'border-orange-400 ring-2 ring-orange-400 ring-offset-2' : 'border-slate-200';
 
@@ -51,11 +54,26 @@ const DocumentCard = forwardRef<HTMLDivElement, DocumentCardProps>(({ document, 
       </div>
       
       <div className="mt-4 text-sm text-slate-600 pl-9 space-y-3">
-        <p dangerouslySetInnerHTML={{ __html: snippet }} />
+        {/* Visual line clamp so it works even if the snippet has no newline characters */}
+        <div
+          className="whitespace-pre-wrap"
+          style={{
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical' as any,
+            WebkitLineClamp: visibleLines as any,
+            overflow: 'hidden'
+          }}
+        >
+          {snippet}
+        </div>
         <div>
             <a href="#" className="text-blue-600 hover:underline font-medium">Page 1 Preview</a>
-            <a href="#" className="ml-4 text-blue-600 hover:underline font-medium inline-flex items-center">
-                More highlights <ChevronDownIcon className="w-4 h-4 ml-1" />
+            <a
+              href="#"
+              className="ml-4 text-blue-600 hover:underline font-medium inline-flex items-center"
+              onClick={(e) => { e.preventDefault(); setVisibleLines(v => v + 8); }}
+            >
+              More highlights <ChevronDownIcon className="w-4 h-4 ml-1" />
             </a>
         </div>
         {(missingInfo || mustInclude) && (
