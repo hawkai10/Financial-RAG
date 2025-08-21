@@ -69,6 +69,53 @@ def initialize_embeddings():
     """No-op: txtai embeddings removed."""
     return False
 
+# Lazy index of local document paths to resolve full paths from names
+_DOCUMENT_PATH_INDEX = None  # type: ignore[var-annotated]
+_DOCUMENT_PATH_INDEX_STEM = None  # type: ignore[var-annotated]
+
+def _build_document_path_index(base_dir: str) -> Dict[str, str]:
+    index: Dict[str, str] = {}
+    index_stem: Dict[str, str] = {}
+    try:
+        for root, _, files in os.walk(base_dir):
+            for name in files:
+                full = os.path.join(root, name)
+                # Prefer first seen; avoid overriding
+                index.setdefault(name, full)
+                stem, _ = os.path.splitext(name)
+                index_stem.setdefault(stem, full)
+    except Exception as e:
+        logger.warning(f"Failed to build document path index from {base_dir}: {e}")
+    return index, index_stem
+
+def _resolve_full_path_from_name(name_candidate: str) -> str:
+    """Try to resolve a full path for a document given only its name or ID."""
+    if not name_candidate:
+        return ""
+    try:
+        # If it's already an existing absolute or relative path, return as-is
+        if os.path.exists(name_candidate):
+            return os.path.abspath(name_candidate)
+
+        # Build index lazily
+        global _DOCUMENT_PATH_INDEX, _DOCUMENT_PATH_INDEX_STEM
+        if _DOCUMENT_PATH_INDEX is None or _DOCUMENT_PATH_INDEX_STEM is None:
+            base_dir = os.path.join(os.getcwd(), 'Source_Documents')
+            _DOCUMENT_PATH_INDEX, _DOCUMENT_PATH_INDEX_STEM = _build_document_path_index(base_dir)
+
+        base = os.path.basename(str(name_candidate))
+        stem, _ = os.path.splitext(base)
+
+        # Exact filename match
+        if base in _DOCUMENT_PATH_INDEX:
+            return _DOCUMENT_PATH_INDEX[base]
+        # Stem match (file name without extension)
+        if stem in _DOCUMENT_PATH_INDEX_STEM:
+            return _DOCUMENT_PATH_INDEX_STEM[stem]
+    except Exception as e:
+        logger.debug(f"Path resolution failed for {name_candidate}: {e}")
+    return ""
+
 def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
     """Convert backend chunk format to UI format"""
     documents = []
@@ -93,6 +140,9 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                     or 'Unknown Document'
                 )
 
+                # Try to resolve a full file path from the document name/id when possible
+                resolved_path = _resolve_full_path_from_name(str(document_name))
+
                 # Get text content from various possible fields (prefer child text)
                 text_content = chunk.get('text', chunk.get('chunk_text', chunk.get('content', '')))
                 # Do not truncate snippet per requirements
@@ -109,6 +159,9 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                         val = chunk.get(key)
                         if isinstance(val, (str, os.PathLike)):
                             candidates.append(str(val))
+                    # Prefer resolved full path if found
+                    if resolved_path:
+                        candidates.insert(0, resolved_path)
 
                     # Determine file extension from first candidate that has one
                     for c in candidates:
@@ -137,7 +190,7 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                 doc = {
                     'id': str(chunk_id),
                     'sourceType': 'Windows Shares',  # Default for now
-                    'sourcePath': str(document_name) if document_name else 'Unknown Path',
+                    'sourcePath': str(resolved_path or document_name) if document_name else 'Unknown Path',
                     'fileType': file_type,  # Actual file extension when available
                     'title': os.path.basename(str(document_name)) if document_name else f'Document {i+1}',
                     'date': last_modified,  # Last edited date when available

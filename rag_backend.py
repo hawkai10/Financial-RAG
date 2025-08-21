@@ -897,6 +897,8 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
 
     from parent_child.parent_store import ParentStore
     parents = ParentStore().get_parents_by_ids(parent_ids)
+    # Map parent_id -> document_id/name for child->doc resolution in UI
+    parent_id_to_doc = {p.parent_id: str(p.document_id) for p in parents}
     parent_chunks: List[Dict[str, Any]] = []
     for p in parents:
         parent_chunks.append({
@@ -978,6 +980,17 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
             {
                 "chunk_id": c.get("chunk_id"),
                 "child_id": c.get("child_id"),
+                # Resolve parent id via mapping if available
+                "parent_id": (
+                    child_to_parent.get(str(c.get("child_id") or str(c.get("chunk_id", ""))[6:]))
+                    if isinstance(child_to_parent, dict) else None
+                ),
+                # Provide document name/path for UI title/sourcePath
+                "document_name": (
+                    parent_id_to_doc.get(
+                        child_to_parent.get(str(c.get("child_id") or str(c.get("chunk_id", ""))[6:]))
+                    ) if isinstance(child_to_parent, dict) else None
+                ),
                 "text": c.get("chunk_text", c.get("text", "")),
                 "retrieval_score": c.get("retrieval_score"),
                 "final_rerank_score": c.get("final_rerank_score")
