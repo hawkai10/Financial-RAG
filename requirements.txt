@@ -1,332 +1,37 @@
-# Core dependencies for Financial RAG application
-streamlit>=1.28.0
-requests>=2.31.0
-numpy>=1.24.0
-pandas>=2.0.0
+###############################################
+# Minimal, deduplicated requirements for RAG  #
+# Local-only, Flask API, Chroma child store   #
+###############################################
+
+# Core API
 flask>=2.3.0
 flask-cors>=4.0.0
-
-# Async dependencies
-aiosqlite>=0.19.0
-aiohttp>=3.8.0
-
-# AI/ML and embeddings
-rank-bm25>=0.2.2
-tiktoken>=0.5.0
-
-# Document processing
-pdfplumber>=0.9.0
-camelot-py>=0.11.0
-PyMuPDF>=1.23.0
-
-# Additional utilities
 python-dotenv>=1.0.0
-tqdm>=4.65.0
 
-# Optional: For better performance
-scikit-learn>=1.3.0
-scipy>=1.11.0
+# Async + storage
+aiohttp>=3.8.0
+aiosqlite>=0.19.0
 
-# Development dependencies (optional)
-pytest>=7.4.0
-black>=23.0.0
-flake8>=6.0.0
+# Numerical + data
+numpy>=1.24.0
+pandas>=2.0.0
 
-cachetools>=5.0.0
-
-accelerate
-aiohappyeyeballs
-aiohttp
-aiosignal
-altair
-annotated-types
-annoy
-anyio
-async-timeout
-attrs
-backoff
-bcrypt
-beautifulsoup4
-blinker
-build
-cachetools
-camelot-py
-certifi
-cffi
-chardet
-charset-normalizer
-chromadb
+# Retrieval
+rank-bm25>=0.2.2
 chromadb>=0.5.4
-click
-colorama
-coloredlogs
-contourpy
-cryptography
-cycler
-dill
-diskcache
-distro
-durationpy
-easyocr
-et_xmlfile
-exceptiongroup
-faiss-cpu
-fastapi
-fasttext-wheel
-filelock
-filetype
-Flask
-flask-cors
-flatbuffers
-fonttools
-frozenlist
-fsspec
-fund
-gitdb
-GitPython
-google-ai-generativelanguage
-google-api-core
-google-auth
-googleapis-common-protos
-greenlet
-grpcio
-grpcio-status
-h11
-hnswlib
-httpcore
-httptools
-httpx
-huggingface-hub
-humanfriendly
-idna
-imageio
-importlib_metadata
-importlib_resources
-iniconfig
-itsdangerous
-Jinja2
-jiter
-joblib
-jsonlines
-jsonpatch
-jsonpointer
-jsonref
-jsonschema
-jsonschema-specifications
-kiwisolver
-kubernetes
-langchain-core
-langchain-google-genai
-langsmith
-latex2mathml
-lazy_loader
-litellm
-llama_cpp_python
-lxml
-markdown-it-py
-marko
-MarkupSafe
-matplotlib
-mdurl
-mmh3
-model2vec
-mpire
-mpmath
-msgpack
-multidict
-multiprocess
-narwhals
-networkx
-ninja
-npm
-numpy
-oauthlib
-onnxruntime
-openai
-opencv-python-headless
-openpyxl
-opentelemetry-api
-opentelemetry-exporter-otlp-proto-common
-opentelemetry-exporter-otlp-proto-grpc
-opentelemetry-proto
-opentelemetry-sdk
-opentelemetry-semantic-conventions
-optional-django
-orjson
-overrides
-packaging
-pandas
-pdfminer.six
-pdfplumber
-pgvector
-psycopg[binary]
-pillow
-pip
-plotly
-pluggy
-posthog
-propcache
-proto-plus
-protobuf
-psutil
-pyarrow
-pyasn1
-pyasn1_modules
-pybase64
-pybind11
-pyclipper
-pycparser
-pydantic
-pydantic_core
-pydantic-settings
-pydeck
-Pygments
-pylatexenc
-PyMuPDF
-pyparsing
-pypdf
-pypdfium2
-PyPika
-pyproject_hooks
-pyreadline3
-pytest
-python-bidi
-python-dateutil
-python-docx
-python-dotenv
-python-multipart
-python-pptx
-pytz
-pywin32
-PyYAML
-rank-bm25
-referencing
-regex
-requests
-requests-oauthlib
-requests-toolbelt
-rich
-rpds-py
-rsa
-rtree
-safetensors
-scikit-image
-scikit-learn
-scipy
-semchunk
-sentence-transformers
-setuptools
-shapely
-shellingham
-six
-skops
-smmap
-sniffio
-soupsieve
-SQLAlchemy
-sqlite-vec
-starlette
-staticvectors
-streamlit
-streamlit-pdf-viewer
-sympy
-tabulate
-tenacity
-threadpoolctl
-tifffile
-tiktoken
-tokenizers
-toml
-tomli
-torch
-torchvision
-tornado
-tqdm
-transformers
-typer
-typing_extensions
-typing-inspection
-tzdata
-urllib3
-uvicorn
-watchdog
-watchfiles
-websocket-client
-websockets
-Werkzeug
-xlsxwriter
-yarl
-zipp
-zstandard
 
+# Local models (embeddings + cross-encoder reranker)
+torch>=2.1.0
+sentence-transformers>=2.2.2
+transformers>=4.35.2
+safetensors>=0.4.0
 
-# Existing dependencies
-python-dotenv==1.0.0
-tiktoken==0.5.2
-numpy==1.24.3
-pandas==2.0.3
-scikit-learn==1.3.0
-sentence-transformers==2.2.2
-transformers==4.35.2
-torch==2.1.1
-BeautifulSoup4==4.12.2
-requests==2.31.0
+# Optional dev tooling (uncomment if needed)
+# pytest>=7.4.0
+# black>=23.0.0
+# flake8>=6.0.0
 
-# New ML-based components
-spacy==3.7.2
-en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
-
-# Graph database (Dgraph)
-pydgraph==21.3.2
-grpcio==1.59.0
-
-# Vector database (Qdrant)
-qdrant-client==1.7.0
-grpcio-tools==1.59.0
-
-# Enhanced data processing
-lxml==4.9.3
-html5lib==1.1
-bleach==6.1.0
-
-# Performance optimization
-asyncio==3.4.3
-concurrent-futures==3.1.1
-aiohttp==3.9.1
-uvloop==0.19.0
-
-# Monitoring and logging
-psutil==5.9.6
-structlog==23.2.0
-
-# API and web framework
-fastapi==0.104.1
-uvicorn==0.24.0
-pydantic==2.5.0
-
-# Development and testing
-pytest==7.4.3
-pytest-asyncio==0.21.1
-black==23.11.0
-flake8==6.1.0
-
-# Database utilities
-sqlalchemy==2.0.23
-alembic==1.13.1
-
-# Additional ML utilities
-networkx==3.2.1  # For graph analysis
-plotly==5.17.0    # For visualization
-dash==2.14.2      # For dashboards
-
-# Configuration management
-pyyaml==6.0.1
-toml==0.10.2
-
-# Security
-cryptography==41.0.8
-bcrypt==4.1.2
-
-# Caching
-redis==5.0.1
-diskcache==5.6.3
+# Notes:
+# - Qdrant/pgvector backends removed; we enforce Chroma child store.
+# - FastAPI/Streamlit/OpenAI/LangChain and PDF/Docx parsers removed; we use Marker CLI for extraction.
+# - Keep torch/sentence-transformers/transformers for local-only model loading.
