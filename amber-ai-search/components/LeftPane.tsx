@@ -48,7 +48,7 @@ const LeftPane: React.FC<LeftPaneProps> = ({ documents, docRefs, highlightedDocI
         </div>
         <h3 className="text-lg font-semibold text-slate-700 mb-2">Ready to search</h3>
         <p className="text-slate-500 mb-4">Type your question in the search box above and press Enter to find relevant documents.</p>
-        <p className="text-sm text-slate-400">You can also click on one of the example queries to get started.</p>
+  <p className="text-sm text-slate-400">Use the search box above to start.</p>
       </div>
     );
   }

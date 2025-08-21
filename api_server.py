@@ -27,14 +27,14 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
 import json
 import traceback
-import random
 import time
+from datetime import datetime
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from typing import Dict, List, Any
 
 # Import your existing RAG functions
-from rag_backend import rag_query_enhanced, call_gemini_enhanced
+from rag_backend import rag_query_enhanced
 from config import config
 from utils import logger, validate_and_sanitize_query
 
@@ -57,186 +57,13 @@ try:
 except Exception:
     pass
 
-# Parent-child pipeline toggle and adapter
-PARENT_CHILD_ONLY = os.getenv('PARENT_CHILD_ONLY', 'true').lower() in ('1','true','yes')
-if PARENT_CHILD_ONLY:
-    try:
-        from parent_child.api_adapter import pc_search  # async function
-    except Exception as _e:
-        pc_search = None
+# Permanent routing: always use RAG backend (parent-child path disabled)
+logger.info("[ROUTING] Using RAG backend permanently (parent-child mode disabled)")
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
 
 # No global embeddings (txtai removed)
-# Store generated example queries in memory
-example_queries = []
-
-def generate_example_queries():
-    """Generate example queries from random document chunks"""
-    global example_queries
-    
-    try:
-        # Get diverse documents/chunks from the embeddings using different search terms
-        # Use more specific terms to get varied content
-        sample_queries = [
-            "standard certificate compliance regulation",
-            "export import trade requirement",
-            "safety protocol procedure guideline",
-            "technical specification machine equipment",
-            "legal contract agreement document"
-        ]
-        all_chunks = []
-        
-    # Offline mode: skip txtai sampling
-        
-        # If specific searches didn't work, try broader terms
-    # No txtai, leave all_chunks empty to trigger defaults
-        
-        if not all_chunks:
-            logger.warning("No chunks found for example query generation")
-            # Fallback to default queries
-            example_queries = [
-                "What are the main topics covered in the documents?",
-                "Can you summarize the key information available?",
-                "What important details should I know from these documents?"
-            ]
-            return
-        
-        # Remove duplicates and select chunks with meaningful content
-        unique_chunks = []
-        seen_texts = set()
-        
-        for chunk in all_chunks:
-            text = str(chunk)
-            
-            # Clean and normalize text for comparison
-            clean_text = text.strip().lower()
-            
-            # Only add if we haven't seen this text before and it has meaningful content
-            if (clean_text not in seen_texts and 
-                len(text) > 100 and  # Ensure substantial content
-                len(text.split()) > 20):  # At least 20 words
-                unique_chunks.append(text)
-                seen_texts.add(clean_text)
-        
-        if len(unique_chunks) < 3:
-            logger.warning(f"Only found {len(unique_chunks)} unique chunks")
-            # If we have some chunks, use them and pad with defaults
-            if unique_chunks:
-                selected_chunks = unique_chunks[:3]
-                # Generate questions for available chunks
-                generated_queries = []
-                for i, chunk in enumerate(selected_chunks):
-                    chunk_preview = chunk[:400] + "..." if len(chunk) > 400 else chunk
-                    question = generate_question_from_chunk(chunk_preview, i)
-                    generated_queries.append(question)
-                
-                # Pad with default queries if needed
-                default_queries = [
-                    "What are the main topics covered in the documents?",
-                    "Can you summarize the key information available?",
-                    "What important details should I know from these documents?"
-                ]
-                while len(generated_queries) < 3:
-                    generated_queries.append(default_queries[len(generated_queries) - len(selected_chunks)])
-                
-                example_queries = generated_queries[:3]
-            else:
-                # No chunks found, use defaults
-                example_queries = [
-                    "What are the main topics covered in the documents?",
-                    "Can you summarize the key information available?",
-                    "What important details should I know from these documents?"
-                ]
-            return
-        
-        # Select 3 random chunks from unique ones
-        selected_chunks = random.sample(unique_chunks, min(3, len(unique_chunks)))
-        
-        # Generate questions using Gemini
-        generated_queries = []
-        
-        for i, chunk in enumerate(selected_chunks):
-            # Use more text for better context (up to 400 chars)
-            chunk_preview = chunk[:400] + "..." if len(chunk) > 400 else chunk
-            
-            logger.info(f"Generating question {i+1} from chunk preview: {chunk_preview[:100]}...")
-            question = generate_question_from_chunk(chunk_preview, i)
-            generated_queries.append(question)
-        
-        example_queries = generated_queries
-        logger.info(f"[GENERATE] Generated {len(example_queries)} example queries: {example_queries}")
-        
-    except Exception as e:
-        logger.error(f"[ERROR] Failed to generate example queries: {e}")
-        logger.error(traceback.format_exc())
-        # Fallback to default queries
-        example_queries = [
-            "What are the main topics covered in the documents?",
-            "Can you summarize the key information available?",
-            "What important details should I know from these documents?"
-        ]
-
-def generate_question_from_chunk(chunk_text: str, index: int) -> str:
-    """Generate a question from a chunk of text using Gemini"""
-    try:
-        # Try to use Gemini API for question generation
-        if hasattr(config, 'GEMINI_API_KEY') and config.GEMINI_API_KEY:
-            try:
-                prompt = f"""Based on the following document excerpt, generate a specific, relevant question that someone might ask about this content. The question should be natural and encourage exploration of the document.
-
-Document excerpt:
-{chunk_text}
-
-Instructions:
-- Generate exactly one clear, specific question
-- The question should be directly related to the content shown
-- Make it sound natural, as if a user would really ask this
-- End with a question mark
-- Keep it concise but informative
-
-Question:"""
-
-                response = asyncio.run(call_gemini_enhanced(prompt, strategy="Standard"))
-                if response and response.strip():
-                    question = response.strip()
-                    # Ensure it ends with a question mark
-                    if not question.endswith('?'):
-                        question += '?'
-                    return question
-                    
-            except Exception as e:
-                logger.warning(f"Gemini question generation failed: {e}")
-            
-    except Exception as e:
-        logger.warning(f"Question generation with Gemini failed: {e}")
-    
-    # Fallback to rule-based question generation
-    chunk_lower = chunk_text.lower()
-    
-    # Look for key topics and generate relevant questions
-    if 'standard' in chunk_lower or 'certificate' in chunk_lower or 'compliance' in chunk_lower:
-        return "What standards and certifications are mentioned in the documents?"
-    elif 'export' in chunk_lower or 'import' in chunk_lower or 'trade' in chunk_lower:
-        return "What are the export/import requirements discussed?"
-    elif 'safety' in chunk_lower or 'protocol' in chunk_lower or 'regulation' in chunk_lower:
-        return "What safety protocols and regulations are covered?"
-    elif 'technical' in chunk_lower or 'specification' in chunk_lower:
-        return "What technical specifications are detailed?"
-    elif 'legal' in chunk_lower or 'contract' in chunk_lower or 'agreement' in chunk_lower:
-        return "What legal requirements or agreements are mentioned?"
-    elif 'machine' in chunk_lower or 'equipment' in chunk_lower:
-        return "What information about machinery and equipment is provided?"
-    elif 'process' in chunk_lower or 'procedure' in chunk_lower:
-        return "What processes and procedures are described?"
-    elif 'cost' in chunk_lower or 'price' in chunk_lower or 'budget' in chunk_lower:
-        return "What cost-related information is discussed?"
-    else:
-        # Generic questions based on content preview
-        words = chunk_text.split()[:10]  # First 10 words for context
-        context = ' '.join(words)
-        return f"What information is provided about {context.lower()}?"
 
 def initialize_embeddings():
     """No-op: txtai embeddings removed."""
@@ -262,16 +89,46 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                 
                 # Get text content from various possible fields
                 text_content = chunk.get('chunk_text', chunk.get('text', chunk.get('content', '')))
-                snippet = text_content[:200] + '...' if len(text_content) > 200 else text_content
+                # Do not truncate snippet per requirements
+                snippet = text_content
                 
+                # Derive file type and last modified date from source path when possible
+                file_type = 'unknown'
+                last_modified = 'Unknown'
+                try:
+                    candidates = []
+                    if isinstance(document_name, (str, os.PathLike)):
+                        candidates.append(str(document_name))
+                    for key in ('document_path', 'source_path', 'path', 'file_path', 'source', 'file'):
+                        val = chunk.get(key)
+                        if isinstance(val, (str, os.PathLike)):
+                            candidates.append(str(val))
+
+                    # Determine file extension from first candidate that has one
+                    for c in candidates:
+                        _, ext = os.path.splitext(c)
+                        if ext:
+                            file_type = ext.lstrip('.').lower()
+                            break
+
+                    # Determine last modified date from first existing path
+                    for c in candidates:
+                        if os.path.exists(c):
+                            mtime = os.path.getmtime(c)
+                            last_modified = datetime.fromtimestamp(mtime).strftime('%d.%m.%Y')
+                            break
+                except Exception:
+                    # Keep safe fallbacks if anything goes wrong
+                    pass
+
                 # Create UI-compatible document object
                 doc = {
                     'id': str(chunk_id),
                     'sourceType': 'Windows Shares',  # Default for now
                     'sourcePath': str(document_name) if document_name else 'Unknown Path',
-                    'fileType': 'pdf',  # Default for now
+                    'fileType': file_type,  # Actual file extension when available
                     'title': os.path.basename(str(document_name)) if document_name else f'Document {i+1}',
-                    'date': '01.01.2024',  # Default date
+                    'date': last_modified,  # Last edited date when available
                     'snippet': snippet,
                     'author': 'System',
                     'score': chunk.get('score', 0.0)
@@ -279,15 +136,15 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                 documents.append(doc)
                 
             elif isinstance(chunk, str):
-                # Handle string chunks
-                snippet = chunk[:200] + '...' if len(chunk) > 200 else chunk
+                # Handle string chunks (no truncation)
+                snippet = chunk
                 doc = {
                     'id': f'doc_{i}',
                     'sourceType': 'Windows Shares',
                     'sourcePath': 'Text Content',
                     'fileType': 'txt',
                     'title': f'Text Document {i+1}',
-                    'date': '01.01.2024',
+                    'date': 'Unknown',
                     'snippet': snippet,
                     'author': 'System',
                     'score': 0.0
@@ -479,34 +336,7 @@ def search():
         
         logger.info(f"[SEARCH] UI Search request: {sanitized_query}")
 
-        # Parent-child only mode: bypass classic RAG
-        if PARENT_CHILD_ONLY:
-            if pc_search is None:
-                return jsonify({'error': 'Parent-child pipeline not available'}), 500
-            try:
-                import concurrent.futures, asyncio
-                def run_async_pc():
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        return loop.run_until_complete(pc_search(sanitized_query))
-                    finally:
-                        loop.close()
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    result = executor.submit(run_async_pc).result(timeout=30)
-            except Exception as e:
-                logger.error(f"[ERROR] Parent-child search failed: {e}")
-                return jsonify({'error': f'Parent-child search failed: {str(e)}'}), 500
-
-            documents = result.get('documents', [])
-            ai_response = {'summary': result.get('answer', ''), 'items': []}
-            return jsonify({
-                'documents': documents,
-                'aiResponse': ai_response,
-                'query': sanitized_query,
-                'status': 'success',
-                'method': 'parent_child'
-            })
+    # Parent-child path removed: always use RAG
         
         # Try the full RAG pipeline first (main method)
         try:
@@ -535,7 +365,11 @@ def search():
             # Run in a separate thread to avoid event loop conflicts
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(run_async_rag)
-                result = future.result(timeout=30)  # 30 second timeout
+                try:
+                    result = future.result(timeout=120)  # increased timeout for RAG
+                except concurrent.futures.TimeoutError:
+                    logger.error("[TIMEOUT] RAG processing exceeded 120s timeout")
+                    return jsonify({'error': 'Search timed out. Please try again.'}), 504
             logger.info(f"RAG result type: {type(result)}")
             logger.info(f"RAG result keys (if dict): {result.keys() if isinstance(result, dict) else 'Not a dict'}")
             
@@ -601,57 +435,65 @@ def get_available_filters():
         'timeRanges': ['all', 'week', 'month', '3months', 'year']
     })
 
-@app.route('/example-queries', methods=['GET'])
-def get_example_queries():
-    """Get generated example queries"""
-    global example_queries
-    
-    if not example_queries:
-        # Generate if not already done
-        generate_example_queries()
-    
-    return jsonify({
-        'queries': example_queries,
-        'status': 'success'
-    })
-
 @app.route('/recent-documents', methods=['GET'])
 def get_recent_documents():
-    """Get recently accessed documents"""
+    """Get recently accessed documents by scanning Source_Documents folder"""
     try:
-        # Mock recent documents - in a real app, this would come from user activity logs
-        recent_docs = [
-            {
-                'id': 'doc_1',
-                'title': 'Export_CNC_Machine_US.docx',
-                'fileType': 'word',
-                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\Export_CNC_Machine_US.docx',
-                'lastAccessed': '2025-07-28T10:30:00Z',
+        base_dir = os.path.join(os.getcwd(), 'Source_Documents')
+
+        if not os.path.isdir(base_dir):
+            logger.warning(f"Source_Documents folder not found at: {base_dir}")
+            return jsonify({'documents': [], 'status': 'success'})
+
+        def map_file_type(path: str) -> str:
+            ext = os.path.splitext(path)[1].lower()
+            if ext in ['.pdf']:
+                return 'pdf'
+            if ext in ['.doc', '.docx']:
+                return 'word'
+            if ext in ['.xls', '.xlsx', '.csv']:
+                return 'excel'
+            if ext in ['.ppt', '.pptx']:
+                return 'ppt'
+            if ext in ['.html', '.htm']:
+                return 'html'
+            if ext in ['.txt', '.md']:
+                return 'txt'
+            return 'txt'
+
+        files: List[Dict[str, Any]] = []
+        max_files = 20
+
+        for root, _, filenames in os.walk(base_dir):
+            for name in filenames:
+                full_path = os.path.join(root, name)
+                try:
+                    mtime = os.path.getmtime(full_path)
+                except Exception:
+                    continue
+                files.append({
+                    'path': full_path,
+                    'name': name,
+                    'mtime': mtime,
+                    'fileType': map_file_type(full_path)
+                })
+
+        files.sort(key=lambda x: x['mtime'], reverse=True)
+        top_files = files[:max_files]
+
+        recent_docs = []
+        for i, f in enumerate(top_files, start=1):
+            recent_docs.append({
+                'id': f'doc_{i}',
+                'title': f['name'],
+                'fileType': f['fileType'],
+                'sourcePath': f['path'],
+                'lastAccessed': datetime.fromtimestamp(f['mtime']).isoformat() + 'Z',
                 'sourceType': 'Windows Shares'
-            },
-            {
-                'id': 'doc_2', 
-                'title': '60494300N_NOS_BE_Version_1_Installation_Handbook_Manual.pdf',
-                'fileType': 'pdf',
-                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\60494300N_NOS_BE_Version_1_Installation_Handbook_Manual.pdf',
-                'lastAccessed': '2025-07-28T09:15:00Z',
-                'sourceType': 'Windows Shares'
-            },
-            {
-                'id': 'doc_3',
-                'title': 'EN_IH_P-4532DN_P-5032DN_P-5532DN_UT_Rev_1.pdf',
-                'fileType': 'pdf', 
-                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\EN_IH_P-4532DN_P-5032DN_P-5532DN_UT_Rev_1.pdf',
-                'lastAccessed': '2025-07-27T16:45:00Z',
-                'sourceType': 'Windows Shares'
-            }
-        ]
-        
-        return jsonify({
-            'documents': recent_docs,
-            'status': 'success'
-        })
-        
+            })
+
+        return jsonify({'documents': recent_docs, 'status': 'success'})
+
     except Exception as e:
         logger.error(f"[ERROR] Failed to get recent documents: {e}")
         return jsonify({'error': f'Failed to get recent documents: {str(e)}'}), 500
@@ -683,32 +525,7 @@ def search_stream():
             
             logger.info(f"[STREAM] Starting streaming search for: {sanitized_query}")
             
-            # Parent-child streaming path
-            if PARENT_CHILD_ONLY:
-                try:
-                    import concurrent.futures
-                    def run_async_pc():
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        try:
-                            from parent_child.api_adapter import pc_search
-                            return loop.run_until_complete(pc_search(sanitized_query))
-                        finally:
-                            loop.close()
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        result = executor.submit(run_async_pc).result(timeout=30)
-                    documents = result.get('documents', [])
-                    answer = result.get('answer', '')
-                    yield f"data: {json.dumps({'type': 'chunks', 'data': {'documents': documents}})}\n\n"
-                    time.sleep(0.3)
-                    ai_response = {'summary': answer, 'items': []}
-                    yield f"data: {json.dumps({'type': 'answer', 'data': {'aiResponse': ai_response}})}\n\n"
-                    yield f"data: {json.dumps({'type': 'complete', 'data': {'status': 'success', 'method': 'parent_child'}})}\n\n"
-                    return
-                except Exception as e:
-                    logger.error(f"[STREAM] Parent-child stream failed: {e}")
-                    yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(e)}})}\n\n"
-                    return
+            # Parent-child streaming path removed: always use RAG
 
             # Try the full RAG pipeline (classic)
             try:
@@ -736,7 +553,12 @@ def search_stream():
                 # Run in a separate thread to avoid event loop conflicts
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(run_async_rag)
-                    result = future.result(timeout=30)  # 30 second timeout
+                    try:
+                        result = future.result(timeout=120)  # increased timeout for RAG
+                    except concurrent.futures.TimeoutError:
+                        logger.error("[STREAM TIMEOUT] RAG processing exceeded 120s timeout")
+                        yield f"data: {json.dumps({'type': 'error', 'data': {'error': 'Streaming search timed out. Please try again.'}})}\n\n"
+                        return
                 
                 # Extract chunks from result
                 if isinstance(result, dict):

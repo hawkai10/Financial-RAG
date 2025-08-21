@@ -1,0 +1,96 @@
+{
+  "blocks": [
+    {
+      "id": "/page/0/Form/0",
+      "block_type": "Form",
+      "html": "<table><tbody><tr><th></th><th>Tax Invoice</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th>Bhartiya Enterprises A/c (Yr 19-20)</th><th></th><th colspan=\"3\">Credit Note No.</th><th></th><th colspan=\"3\">Dated</th></tr><tr><th>Chakulia , PO-Chakulia</th><td></td><td colspan=\"3\">CN/24</td><td></td><td colspan=\"3\">30-Jul-22</td></tr><tr><th colspan=\"2\">Dist East Singh Bhum</th><th colspan=\"3\"></th><th></th><th colspan=\"3\">Mode/Terms of Payment</th></tr><tr><th>GSTNO-20AAIPL4886F1ZQ</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th colspan=\"2\">GSTIN/UIN: 20AAIPL4886F1ZQ</th><th colspan=\"3\">Original Invoice No. & Date.</th><th></th><th colspan=\"3\">Other References</th></tr><tr><th colspan=\"2\">State Name : Jharkhand, Code : 20</th><th colspan=\"3\"></th><th></th><th colspan=\"3\"></th></tr><tr><th colspan=\"2\">Consignee (Ship to)</th><th colspan=\"3\">Buyer's Order No.</th><th></th><th colspan=\"3\">Dated</th></tr><tr><th colspan=\"2\">Vijay Agro Products Pvt Ltd</th><th colspan=\"3\"></th><th></th><th></th><th></th><th></th></tr><tr><td colspan=\"2\">2/1 Enikepadu, Vijayawada Rural Krishna<br/>GSTIN/UIN<br/>: 37AAACV7766M1ZK</td><td colspan=\"3\">Dispatch Doc No.</td><td></td><td></td><td></td><td></td></tr><tr><td colspan=\"2\">State Name<br/>: Andhra Pradesh, Code : 37</td><td colspan=\"3\"></td><td></td><td></td><td></td><td></td></tr><tr><td colspan=\"2\">Buyer (Bill to)</td><td colspan=\"3\">Dispatched through</td><td></td><td colspan=\"3\">Destination</td></tr><tr><th colspan=\"2\" rowspan=\"2\">Vijay Agro Products Pvt Ltd<br/>2/1 Enikepadu, Vijayawada Rural Krishna</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th>Terms of Delivery</th><th></th><th colspan=\"2\"></th><th colspan=\"3\"></th></tr><tr><th>GSTIN/UIN<br/>: 37AAACV7766M1ZK</th><th></th><th colspan=\"6\"></th><th></th></tr><tr><th>State Name<br/>: Andhra Pradesh, Code : 37</th><th></th><th colspan=\"7\"></th></tr><tr><th>Place of Supply<br/>: Andhra Pradesh</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th>Sl<br/>Description of Goods</th><th>HSN/SAC</th><th></th><th>GST</th><th>Quantity</th><th></th><th>Rate</th><th>per</th><th>Amount</th></tr><tr><th>No.</th><td></td><td></td><td>Rate</td><td></td><td></td><td></td><td></td><td></td></tr><tr><th>1<br/>Bran</th><td>23022020</td><td></td><td>5 %</td><td></td><td></td><td></td><td></td><td>2,42,318.00</td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th>I.G.S.T.</th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>12,115.90</td></tr><tr><th>Round Off</th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.10</td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr><tr><th></th><td>Total</td><td></td><td></td><td></td><td></td><td></td><td></td><td>₹ 2,54,434.00</td></tr><tr><th>Amount Chargeable (in words)</th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>E. & O.E</td></tr><tr><th>Indian Rupees Two Lakh Fifty Four Thousand Four Hundred Thirty Four Only</th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th>HSN/SAC</th><td></td><td></td><td></td><td>Taxable</td><td></td><td>IGST</td><td></td><td>Total</td></tr><tr><td colspan=\"3\"></td><td></td><td>Value</td><td>Rate</td><td></td><td>Amount</td><td>Tax Amount</td></tr><tr><td colspan=\"3\">23022020</td><td></td><td>2,42,318.00</td><td></td><td>5%</td><td>12,115.90</td><td>12,115.90</td></tr><tr><th></th><td></td><td>Total</td><td></td><td>2,42,318.00</td><td></td><td></td><td>12,115.90</td><td>12,115.90</td></tr><tr><th>Indian Rupees Twelve Thousand One Hundred Fifteen and Ninety paise Only<br/>Tax Amount (in words) :</th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>for Bhartiya Enterprises A/c (Yr 19-20)</td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><th></th><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>Authorised Signatory</td></tr></tbody></table>",
+      "page": 760,
+      "polygon": [
+        [
+          33.64343523979187,
+          19.94317626953125
+        ],
+        [
+          562.5088858604431,
+          19.94317626953125
+        ],
+        [
+          561.3467764854431,
+          797.9554481506348
+        ],
+        [
+          32.48132586479187,
+          797.9554481506348
+        ]
+      ],
+      "bbox": [
+        32.48132586479187,
+        19.94317626953125,
+        562.5088858604431,
+        797.9554481506348
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    },
+    {
+      "id": "/page/0/PageFooter/1",
+      "block_type": "PageFooter",
+      "html": "",
+      "page": 760,
+      "polygon": [
+        [
+          219.95051354169846,
+          804.281123995781
+        ],
+        [
+          366.245713531971,
+          802.636592745781
+        ],
+        [
+          366.245713531971,
+          813.3154563903809
+        ],
+        [
+          219.95051354169846,
+          814.3744546175003
+        ]
+      ],
+      "bbox": [
+        219.95051354169846,
+        802.636592745781,
+        366.245713531971,
+        814.3744546175003
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    }
+  ],
+  "page_info": {
+    "0": {
+      "bbox": [
+        0.0,
+        0.0,
+        595.0,
+        842.0
+      ],
+      "polygon": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          595.0,
+          0.0
+        ],
+        [
+          595.0,
+          842.0
+        ],
+        [
+          0.0,
+          842.0
+        ]
+      ]
+    }
+  }
+}

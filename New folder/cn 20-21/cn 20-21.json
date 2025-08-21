@@ -1,0 +1,96 @@
+{
+  "blocks": [
+    {
+      "id": "/page/0/Form/0",
+      "block_type": "Form",
+      "html": "<table>\n<tr>\n<th colspan=\"9\">Tax Invoice</th>\n</tr>\n<tr>\n<td colspan=\"3\">Bhartiya Enterprises A/c (Yr 19-20)</td>\n<td colspan=\"4\">Credit Note No.</td>\n<td colspan=\"2\">Dated</td>\n</tr>\n<tr>\n<td>Chakulia , PO-Chakulia</td>\n<td colspan=\"3\">9</td>\n<td colspan=\"2\">11-Mar-21</td>\n</tr>\n<tr>\n<td colspan=\"2\">Dist East Singh Bhum</td>\n<td colspan=\"3\">Mode/Terms of Payment</td>\n</tr>\n<tr>\n<td>GSTNO-20AAIPL4886F1ZQ</td>\n</tr>\n<tr>\n<td colspan=\"3\">GSTIN/UIN: 20AAIPL4886F1ZQ<br/>State Name : Jharkhand, Code : 20</td>\n<td colspan=\"3\">Original Invoice No. & Date.</td>\n<td colspan=\"3\">Other References</td>\n</tr>\n<tr>\n<td>Consignee (Ship to)</td>\n<td colspan=\"3\">130/20.21 dt. 18-Feb-21<br/>Buyer's Order No.</td>\n<td colspan=\"3\">Dated</td>\n</tr>\n<tr>\n<td>Shree Vaishnodevi Oil Industries</td>\n</tr>\n<tr>\n<td>At-Po-Chakerkend, Dist-Bargarh</td>\n</tr>\n<tr>\n<td>GSTIN/UIN<br/>: 21ADIFS3392Q1ZI</td>\n<td colspan=\"3\">Dispatch Doc No.</td>\n</tr>\n<tr>\n<td>State Name<br/>: Odisha, Code : 21</td>\n</tr>\n<tr>\n<td rowspan=\"3\">Buyer (Bill to)<br/>Shree Vaishnodevi Oil Industries<br/>At-Po-Chakerkend, Dist-Bargarh</td>\n<td colspan=\"3\">Dispatched through</td>\n<td colspan=\"3\">Destination</td>\n</tr>\n<tr></tr>\n<tr>\n<td colspan=\"5\">Terms of Delivery</td>\n</tr>\n<tr>\n<td>GSTIN/UIN<br/>: 21ADIFS3392Q1ZI</td>\n</tr>\n<tr>\n<td>State Name<br/>: Odisha, Code : 21<br/>Place of Supply<br/>: Odisha</td>\n</tr>\n<tr>\n<th>Sl<br/>No.</th>\n<th>Description of Goods</th>\n<th>HSN/SAC</th>\n<th>GST<br/>Rate</th>\n<th>Quantity</th>\n<th>Rate</th>\n<th>per</th>\n<th>Amount</th>\n</tr>\n<tr>\n<td>1<br/>Bran</td>\n<td>23022020</td>\n<td>5 %</td>\n<td></td>\n<td></td>\n<td>1,87,066.50</td>\n</tr>\n<tr>\n<td colspan=\"7\">I.G.S.T.</td>\n<td>9,353.33</td>\n</tr>\n<tr>\n<td colspan=\"7\">Round Off</td>\n<td>0.17</td>\n</tr>\n<tr>\n<td colspan=\"7\">Total</td>\n<td>₹ 1,96,420.00</td>\n</tr>\n<tr>\n<td>Amount Chargeable (in words)</td>\n<td>E. & O.E</td>\n</tr>\n<tr>\n<td>Indian Rupees One Lakh Ninety Six Thousand Four Hundred Twenty Only</td>\n</tr>\n<tr>\n<td>HSN/SAC</td>\n<td>Taxable Value</td>\n<td>Rate</td>\n<td>IGST Amount</td>\n<td>Total Tax Amount</td>\n</tr>\n<tr>\n<td>23022020</td>\n<td>1,87,066.50</td>\n<td>5%</td>\n<td>9,353.33</td>\n<td>9,353.33</td>\n</tr>\n<tr>\n<td>Total</td>\n<td>1,87,066.50</td>\n<td></td>\n<td>9,353.33</td>\n<td>9,353.33</td>\n</tr>\n<tr>\n<td>Tax Amount (in words) :</td>\n<td>Indian Rupees Nine Thousand Three Hundred Fifty Three and Thirty Three paise Only<br/>for Bhartiya Enterprises A/c (Yr 19-20)</td>\n</tr>\n<tr>\n<td></td>\n<td>Authorised Signatory</td>\n</tr>\n</table>",
+      "page": 764,
+      "polygon": [
+        [
+          33.80444526672363,
+          19.94317626953125
+        ],
+        [
+          562.3393642902374,
+          19.94317626953125
+        ],
+        [
+          561.1772549152374,
+          797.9554481506348
+        ],
+        [
+          32.64233589172363,
+          797.9554481506348
+        ]
+      ],
+      "bbox": [
+        32.64233589172363,
+        19.94317626953125,
+        562.3393642902374,
+        797.9554481506348
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    },
+    {
+      "id": "/page/0/PageFooter/1",
+      "block_type": "PageFooter",
+      "html": "",
+      "page": 764,
+      "polygon": [
+        [
+          220.17989963293076,
+          804.4817720651627
+        ],
+        [
+          366.4044538140297,
+          802.8372408151627
+        ],
+        [
+          366.4044538140297,
+          813.3154563903809
+        ],
+        [
+          220.17989963293076,
+          814.3960350751877
+        ]
+      ],
+      "bbox": [
+        220.17989963293076,
+        802.8372408151627,
+        366.4044538140297,
+        814.3960350751877
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    }
+  ],
+  "page_info": {
+    "0": {
+      "bbox": [
+        0.0,
+        0.0,
+        595.0,
+        842.0
+      ],
+      "polygon": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          595.0,
+          0.0
+        ],
+        [
+          595.0,
+          842.0
+        ],
+        [
+          0.0,
+          842.0
+        ]
+      ]
+    }
+  }
+}

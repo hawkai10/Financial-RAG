@@ -7,7 +7,7 @@
   "children_total_tokens": 291,
   "parents": [
     {
-      "parent_id": 216629410604781568,
+      "parent_id": 216829415722586112,
       "document_id": "cn22-23",
       "page_start": 760,
       "page_end": 760,
@@ -17,8 +17,8 @@
   ],
   "children": [
     {
-      "child_id": 216629410650918912,
-      "parent_id": 216629410604781568,
+      "child_id": 216829415722586113,
+      "parent_id": 216829415722586112,
       "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20) Credit Note No. Dated\nChakulia , PO-Chakulia CN/24 30-Jul-22\nDist East Singh Bhum Mode/Terms of Payment\nGSTNO-20AAIPL4886F1ZQ\nGSTIN/UIN: 20AAIPL4886F1ZQ Original Invoice No. & Date. Other References\nState Name : Jharkhand, Code : 20\nConsignee (Ship to) Buyer's Order No. Dated\nVijay Agro Products Pvt Ltd\n2/1 Enikepadu, Vijayawada Rural Krishna\nGSTIN/UIN\n: 37AAACV7766M1ZK Dispatch Doc No.\nState Name\n: Andhra Pradesh, Code : 37\nBuyer (Bill to) Dispatched through Destination\nVijay Agro Products Pvt Ltd\n2/1 Enikepadu, Vijayawada Rural Krishna\nTerms of Delivery\nGSTIN/UIN\n: 37AAACV7766M1ZK\nState Name\n: Andhra Pradesh, Code : 37\nPlace of Supply\n: Andhra Pradesh\nSl\nDescription of Goods HSN/SAC GST Quantity Rate per Amount\nNo. Rate\n1\nBran 23022020 5 % 2,42,318.00\nI.G.S.T. 12,115.90\nRound Off 0.10\nTotal ₹ 2,54,434.00\nAmount Chargeable (in words) E. & O.E\nIndian Rupees Two Lakh Fifty Four Thousand Four Hundred Thirty Four Only\nHSN/SAC Taxable IGST Total\nValue Rate Amount Tax Amount\n23022020 2,42,318.00 5% 12,115.90 12,115.90\nTotal 2,42,318.00 12,115.90 12,115.90\nIndian Rupees Twelve Thousand One Hundred Fifteen and Ninety paise Only\nTax Amount (in words) :\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
       "tokens": 291
     }

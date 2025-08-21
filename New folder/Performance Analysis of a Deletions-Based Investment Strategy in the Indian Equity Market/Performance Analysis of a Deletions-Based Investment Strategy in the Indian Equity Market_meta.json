@@ -1,0 +1,1062 @@
+{
+  "table_of_contents": [
+    {
+      "title": "Performance Analysis of a Deletions \n\u2013 Based investment strategy in the \nIndian Equity Market",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          77.46581089496613,
+          112.75424337387085
+        ],
+        [
+          539.14892578125,
+          112.75424337387085
+        ],
+        [
+          539.14892578125,
+          229.12996244430542
+        ],
+        [
+          76.27049839496613,
+          229.12996244430542
+        ]
+      ]
+    },
+    {
+      "title": "INTRODUCTION",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          71.68044349551201,
+          73.3341064453125
+        ],
+        [
+          160.2352555990219,
+          73.3341064453125
+        ],
+        [
+          160.2352555990219,
+          84.40971690416336
+        ],
+        [
+          71.68044349551201,
+          84.40971690416336
+        ]
+      ]
+    },
+    {
+      "title": "3. DATA & METHODOLOGY\n3.1 DATA SOURCES",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          323.05286478996277,
+          75.70599365234375
+        ],
+        [
+          477.6721980571747,
+          75.70599365234375
+        ],
+        [
+          477.6721980571747,
+          101.5059814453125
+        ],
+        [
+          323.05286478996277,
+          101.5059814453125
+        ]
+      ]
+    },
+    {
+      "title": "3.2 PORTFOLIO CONSTRUCTION",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          71.12281733751297,
+          75.16489291191101
+        ],
+        [
+          253.6603925228119,
+          75.16489291191101
+        ],
+        [
+          253.6603925228119,
+          86.74603271484375
+        ],
+        [
+          71.12281733751297,
+          86.74603271484375
+        ]
+      ]
+    },
+    {
+      "title": "FIVE-YEAR DELETION LOOKBACK",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          71.27044397592545,
+          214.55401253700256
+        ],
+        [
+          261.5148620605469,
+          214.55401253700256
+        ],
+        [
+          261.5148620605469,
+          225.90863585472107
+        ],
+        [
+          71.27044397592545,
+          225.90863585472107
+        ]
+      ]
+    },
+    {
+      "title": "QUALITY SCREENING USING FINAN-\nCIAL RATIOS",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          71.99481582641602,
+          454.984130859375
+        ],
+        [
+          288.6868278980255,
+          454.984130859375
+        ],
+        [
+          288.01055908203125,
+          478.744140625
+        ],
+        [
+          70.79950332641602,
+          478.744140625
+        ]
+      ]
+    },
+    {
+      "title": "EXCLUSION OF THE BOTTOM 20%",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          323.85585594177246,
+          361.484130859375
+        ],
+        [
+          509.7628173828125,
+          361.2901511192322
+        ],
+        [
+          509.7628173828125,
+          372.5241394042969
+        ],
+        [
+          322.66054344177246,
+          373.4209027290344
+        ]
+      ]
+    },
+    {
+      "title": "EQUAL-WEIGHT PORTFOLIO \nSELECTION",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          323.34020233154297,
+          553.4759826660156
+        ],
+        [
+          486.99737548828125,
+          552.8212509155273
+        ],
+        [
+          486.99737548828125,
+          579.3959808349609
+        ],
+        [
+          322.14488983154297,
+          579.3959808349609
+        ]
+      ]
+    },
+    {
+      "title": "ANNUAL REBALANCING IN MARCH",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          72.02399444580078,
+          113.57243299484253
+        ],
+        [
+          274.2105407714844,
+          113.57243299484253
+        ],
+        [
+          274.2105407714844,
+          124.66595458984375
+        ],
+        [
+          72.02399444580078,
+          124.66595458984375
+        ]
+      ]
+    },
+    {
+      "title": "3.3 SCORING MECHANISM",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          71.68576017022133,
+          412.1159973144531
+        ],
+        [
+          220.1918182373047,
+          412.1159973144531
+        ],
+        [
+          220.1918182373047,
+          423.156005859375
+        ],
+        [
+          71.68576017022133,
+          423.156005859375
+        ]
+      ]
+    },
+    {
+      "title": "NORMALIZATION USING PERCENTILE \nRANKING",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          71.88060307502747,
+          528.1559753417969
+        ],
+        [
+          289.8211364746094,
+          528.1559753417969
+        ],
+        [
+          289.8211364746094,
+          553.9559783935547
+        ],
+        [
+          71.88060307502747,
+          553.9559783935547
+        ]
+      ]
+    },
+    {
+      "title": "CALCULATION OF COMPOSITE \nQUALITY SCORE",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          321.8449673652649,
+          240.13592529296875
+        ],
+        [
+          500.63275146484375,
+          240.13592529296875
+        ],
+        [
+          500.63275146484375,
+          266.27771615982056
+        ],
+        [
+          321.8449673652649,
+          266.27771615982056
+        ]
+      ]
+    },
+    {
+      "title": "THRESHOLD-BASED FILTERING",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          323.4858956336975,
+          499.71600341796875
+        ],
+        [
+          501.7127380371094,
+          499.71600341796875
+        ],
+        [
+          501.7127380371094,
+          510.7560119628906
+        ],
+        [
+          323.4858956336975,
+          510.7560119628906
+        ]
+      ]
+    },
+    {
+      "title": "4.1 PORTFOLIO PERFORMANCE",
+      "heading_level": null,
+      "page_id": 4,
+      "polygon": [
+        [
+          72.02399444580078,
+          216.10595703125
+        ],
+        [
+          245.55072021484375,
+          215.3926899433136
+        ],
+        [
+          245.55072021484375,
+          227.14599609375
+        ],
+        [
+          70.9666001200676,
+          227.8193814754486
+        ]
+      ]
+    },
+    {
+      "title": "ANNUAL RETURNS AND VOLATILITY",
+      "heading_level": null,
+      "page_id": 4,
+      "polygon": [
+        [
+          72.02399444580078,
+          359.656005859375
+        ],
+        [
+          282.8336341381073,
+          358.36632227897644
+        ],
+        [
+          281.6383216381073,
+          370.6960144042969
+        ],
+        [
+          71.25563389062881,
+          370.6960144042969
+        ]
+      ]
+    },
+    {
+      "title": "RISK AND RISK-ADJUSTED RETURN",
+      "heading_level": null,
+      "page_id": 4,
+      "polygon": [
+        [
+          321.9744644165039,
+          253.93597412109375
+        ],
+        [
+          525.2567467689514,
+          252.6604199409485
+        ],
+        [
+          525.0066528320312,
+          264.97601318359375
+        ],
+        [
+          320.7791519165039,
+          264.97601318359375
+        ]
+      ]
+    },
+    {
+      "title": "BEHAVIORAL PATTERNS AND CYCLI-\nCAL RESPONSE",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          71.58338910341263,
+          293.564306974411
+        ],
+        [
+          288.30373549461365,
+          293.564306974411
+        ],
+        [
+          288.30373549461365,
+          319.9360046386719
+        ],
+        [
+          71.58338910341263,
+          319.9360046386719
+        ]
+      ]
+    },
+    {
+      "title": "4.2 COMPARISON WITH BENCHMARK",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          71.28504431247711,
+          601.6395835876465
+        ],
+        [
+          281.68463134765625,
+          601.6395835876465
+        ],
+        [
+          281.68463134765625,
+          613.0259857177734
+        ],
+        [
+          71.28504431247711,
+          613.0259857177734
+        ]
+      ]
+    },
+    {
+      "title": "ABSOLUTE AND RELATIVE RETURNS",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          71.37130576372147,
+          680.1059799194336
+        ],
+        [
+          278.1072106361389,
+          678.5750412940979
+        ],
+        [
+          278.1072106361389,
+          691.1459808349609
+        ],
+        [
+          71.37130576372147,
+          691.1459808349609
+        ]
+      ]
+    },
+    {
+      "title": "ALPHA GENERATION",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          322.8993287086487,
+          278.05596923828125
+        ],
+        [
+          444.4750270843506,
+          277.2308449745178
+        ],
+        [
+          443.76568603515625,
+          289.09600830078125
+        ],
+        [
+          321.7040162086487,
+          289.09600830078125
+        ]
+      ]
+    },
+    {
+      "title": "VOLATILITY AND DRAWDOWN COM-\nPARISON",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          324.07000732421875,
+          507.9960021972656
+        ],
+        [
+          535.3021795749664,
+          507.54787158966064
+        ],
+        [
+          534.1068670749664,
+          533.7959899902344
+        ],
+        [
+          323.13720202445984,
+          533.7959899902344
+        ]
+      ]
+    },
+    {
+      "title": "4.4 INTERPRETATION OF RESULTS",
+      "heading_level": null,
+      "page_id": 5,
+      "polygon": [
+        [
+          324.07000732421875,
+          674.4941482543945
+        ],
+        [
+          510.58907175064087,
+          674.4941482543945
+        ],
+        [
+          509.39375925064087,
+          685.5341491699219
+        ],
+        [
+          323.24681854248047,
+          686.4346089363098
+        ]
+      ]
+    },
+    {
+      "title": "UNDERPERFORMANCE IN CAGR: \nSTRUCTURAL AND BEHAVIORAL \nDRIVERS",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          72.02399444580078,
+          176.7835292816162
+        ],
+        [
+          260.91915822029114,
+          176.7835292816162
+        ],
+        [
+          259.86962890625,
+          217.5460205078125
+        ],
+        [
+          71.02352410554886,
+          217.5460205078125
+        ]
+      ]
+    },
+    {
+      "title": "CRISIS AND RECOVERY BEHAVIOR",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          323.3749294281006,
+          75.32852375507355
+        ],
+        [
+          520.2169404029846,
+          75.32852375507355
+        ],
+        [
+          520.2169404029846,
+          86.74603271484375
+        ],
+        [
+          323.3749294281006,
+          86.74603271484375
+        ]
+      ]
+    },
+    {
+      "title": "TURNOVER DYNAMICS",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          323.93931770324707,
+          380.3496687412262
+        ],
+        [
+          456.86165714263916,
+          380.3496687412262
+        ],
+        [
+          456.05322265625,
+          392.5360107421875
+        ],
+        [
+          322.74400520324707,
+          392.5360107421875
+        ]
+      ]
+    },
+    {
+      "title": "LIQUIDITY AND IMPLEMENTATION \nCONSTRAINTS",
+      "heading_level": null,
+      "page_id": 6,
+      "polygon": [
+        [
+          323.504754781723,
+          596.3741607666016
+        ],
+        [
+          518.6610717773438,
+          596.3741607666016
+        ],
+        [
+          518.6610717773438,
+          620.1341400146484
+        ],
+        [
+          323.504754781723,
+          620.1341400146484
+        ]
+      ]
+    },
+    {
+      "title": "SECTOR CONCENTRATION AND \nPORTFOLIO BIAS",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          72.02399444580078,
+          214.78594970703125
+        ],
+        [
+          255.4204559326172,
+          213.8264365196228
+        ],
+        [
+          255.4204559326172,
+          240.70599365234375
+        ],
+        [
+          70.9917973279953,
+          240.70599365234375
+        ]
+      ]
+    },
+    {
+      "title": "5. CONCLUSION",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          72.02399444580078,
+          510.04785346984863
+        ],
+        [
+          162.823792219162,
+          508.50097846984863
+        ],
+        [
+          161.8233642578125,
+          521.1960144042969
+        ],
+        [
+          71.23473197221756,
+          522.0345296859741
+        ]
+      ]
+    },
+    {
+      "title": "PRACTICAL IMPLICATIONS",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          322.7070894241333,
+          290.3917922973633
+        ],
+        [
+          478.822970867157,
+          288.8449172973633
+        ],
+        [
+          478.13323974609375,
+          301.81597900390625
+        ],
+        [
+          321.5117769241333,
+          302.03801250457764
+        ]
+      ]
+    },
+    {
+      "title": "LIMITATIONS AND FUTURE WORK",
+      "heading_level": null,
+      "page_id": 7,
+      "polygon": [
+        [
+          324.07000732421875,
+          557.5095076560974
+        ],
+        [
+          520.2166485786438,
+          555.9626326560974
+        ],
+        [
+          519.0213360786438,
+          569.5559844970703
+        ],
+        [
+          323.84710121154785,
+          569.5559844970703
+        ]
+      ]
+    },
+    {
+      "title": "REFERENCES",
+      "heading_level": null,
+      "page_id": 8,
+      "polygon": [
+        [
+          71.59423220157623,
+          302.7309150695801
+        ],
+        [
+          144.77819573879242,
+          302.7309150695801
+        ],
+        [
+          144.77819573879242,
+          314.4159851074219
+        ],
+        [
+          71.59423220157623,
+          314.4159851074219
+        ]
+      ]
+    }
+  ],
+  "page_stats": [
+    {
+      "page_id": 0,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          68
+        ],
+        [
+          "Line",
+          36
+        ],
+        [
+          "Text",
+          4
+        ],
+        [
+          "SectionHeader",
+          1
+        ],
+        [
+          "PageFooter",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 1,
+        "llm_error_count": 0,
+        "llm_tokens_used": 7036,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 1,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          169
+        ],
+        [
+          "Line",
+          96
+        ],
+        [
+          "Text",
+          10
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "PageFooter",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 2,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          225
+        ],
+        [
+          "Line",
+          106
+        ],
+        [
+          "TableCell",
+          36
+        ],
+        [
+          "Text",
+          17
+        ],
+        [
+          "SectionHeader",
+          5
+        ],
+        [
+          "Table",
+          1
+        ],
+        [
+          "PageFooter",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 1,
+        "llm_error_count": 0,
+        "llm_tokens_used": 2818,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 3,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          185
+        ],
+        [
+          "Line",
+          85
+        ],
+        [
+          "Text",
+          13
+        ],
+        [
+          "SectionHeader",
+          5
+        ],
+        [
+          "ListItem",
+          3
+        ],
+        [
+          "Figure",
+          1
+        ],
+        [
+          "PageFooter",
+          1
+        ],
+        [
+          "ListGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 4,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          137
+        ],
+        [
+          "Line",
+          54
+        ],
+        [
+          "Text",
+          8
+        ],
+        [
+          "Figure",
+          4
+        ],
+        [
+          "SectionHeader",
+          3
+        ],
+        [
+          "PageFooter",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 5,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          173
+        ],
+        [
+          "Line",
+          84
+        ],
+        [
+          "Text",
+          12
+        ],
+        [
+          "SectionHeader",
+          6
+        ],
+        [
+          "Figure",
+          1
+        ],
+        [
+          "PageFooter",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 6,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          212
+        ],
+        [
+          "Line",
+          96
+        ],
+        [
+          "Text",
+          8
+        ],
+        [
+          "SectionHeader",
+          4
+        ],
+        [
+          "ListItem",
+          3
+        ],
+        [
+          "PageFooter",
+          1
+        ],
+        [
+          "ListGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 7,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          194
+        ],
+        [
+          "Line",
+          97
+        ],
+        [
+          "Text",
+          12
+        ],
+        [
+          "SectionHeader",
+          4
+        ],
+        [
+          "PageFooter",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 8,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          82
+        ],
+        [
+          "Line",
+          34
+        ],
+        [
+          "Text",
+          6
+        ],
+        [
+          "SectionHeader",
+          1
+        ],
+        [
+          "PageFooter",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    }
+  ],
+  "debug_data_path": "debug_data\\Performance Analysis of a Deletions-Based Investment Strategy in the Indian Equity Market"
+}

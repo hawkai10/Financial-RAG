@@ -1,18 +1,15 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React from 'react';
 import FilterDropdown from './FilterDropdown';
 import TimeFilterDropdown from './TimeFilterDropdown';
 import { SearchIcon } from './icons/SearchIcon';
 import { BellIcon } from './icons/BellIcon';
 import { PlusIcon } from './icons/PlusIcon';
 import { UserIcon } from './icons/UserIcon';
-import { ChevronLeftIcon } from './icons/ChevronLeftIcon';
-import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import { FolderIcon } from './icons/FolderIcon';
 import { ClockIcon } from './icons/ClockIcon';
 import { DataSourceIcon } from './icons/DataSourceIcon';
 import type { Filters, FileType, DataSourceType, TimeRangeFilterValue } from '../types';
 import { FILE_TYPE_OPTIONS, TIME_RANGE_OPTIONS, DATA_SOURCE_OPTIONS } from '../constants';
-import { fetchExampleQueries } from '../services/geminiService';
 
 
 interface HeaderProps {
@@ -36,33 +33,7 @@ const Header: React.FC<HeaderProps> = ({
     isLoading,
     hasExecutedSearch = false
 }) => {
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [exampleQueries, setExampleQueries] = useState<string[]>([
-        "What are the main topics covered in the documents?",
-        "Can you summarize the key information available?",
-        "What important details should I know from these documents?"
-    ]);
     
-    // Fetch dynamic example queries on component mount
-    useEffect(() => {
-        const loadExampleQueries = async () => {
-            try {
-                const queries = await fetchExampleQueries();
-                setExampleQueries(queries);
-            } catch (error) {
-                console.error('Failed to load example queries:', error);
-                // Keep default queries if fetch fails
-            }
-        };
-        
-        loadExampleQueries();
-    }, []);
-    
-    const handleScroll = (scrollOffset: number) => {
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollBy({ left: scrollOffset, behavior: 'smooth' });
-        }
-    };
 
 
   return (
@@ -114,26 +85,7 @@ const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Second row with example queries */}
-      <div className="flex items-center mt-3 space-x-2">
-        <span className="text-sm text-slate-500 whitespace-nowrap">Example queries:</span>
-        <button onClick={() => handleScroll(-250)} className="p-1 rounded-full hover:bg-slate-200 text-slate-400"><ChevronLeftIcon /></button>
-        <div ref={scrollContainerRef} className="flex-grow overflow-x-auto whitespace-nowrap scrollbar-hide py-1">
-            {exampleQueries.map((q, i) => (
-                <button 
-                  key={i} 
-                  onClick={() => {
-                    onSearchQueryChange(q);
-                    onSearchSubmit();
-                  }}
-                  className={`inline-flex items-center space-x-2 text-sm px-3 py-1 rounded-full mr-2 transition ${searchQuery === q ? 'bg-slate-200 text-slate-800 font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                    <SearchIcon className="w-4 h-4" />
-                    <span>{q}</span>
-                </button>
-            ))}
-        </div>
-        <button onClick={() => handleScroll(250)} className="p-1 rounded-full hover:bg-slate-200 text-slate-400"><ChevronRightIcon /></button>
-      </div>
+      
 
       {/* Third row with filters */}
       <div className="flex items-center mt-3 space-x-2 text-sm">

@@ -7,7 +7,7 @@
   "children_total_tokens": 282,
   "parents": [
     {
-      "parent_id": 216629348000600064,
+      "parent_id": 216829363440586752,
       "document_id": "cn 20.21",
       "page_start": 673,
       "page_end": 673,
@@ -17,8 +17,8 @@
   ],
   "children": [
     {
-      "child_id": 216629348189343744,
-      "parent_id": 216629348000600064,
+      "child_id": 216829363440586753,
+      "parent_id": 216829363440586752,
       "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20)\nCredit Note No.\nDated\nChakulia , PO-Chakulia\n4\n18-Feb-21\nDist East Singh Bhum\nMode/Terms of Payment\nGSTNO-20AAIPL4886F1ZQ\nGSTIN/UIN: 20AAIPL4886F1ZQ\nOriginal Invoice No. & Date.\nOther References\nState Name : Jharkhand, Code : 20\n125 dt. 12-Feb-21\nConsignee (Ship to)\nBuyer's Order No.\nDated\nJay Shree Solvex Pvt Ltd\nDurg, Cg\nDispatch Doc No.\nGSTIN/UIN\n: 22AABCJ4679A1ZX\nState Name\n: Chhattisgarh, Code : 22\nDispatched through\nDestination\nBuyer (Bill to)\nJay Shree Solvex Pvt Ltd\nDurg, Cg\nGSTIN/UIN : 22AABCJ4679A1ZX\nTerms of Delivery\nState Name\n: Chhattisgarh, Code : 22\nPlace of Supply\n: Chhattisgarh\nSl\nDescription of Goods\nHSN/SAC\nGST\nQuantity\nRate\nper\nAmount\nNo.\nRate\n1\nBran\n23022020\n5 %\n1,22,281.80\n6,114.09\nI.G.S.T.\nRound Off\n0.11\nTotal\n₹ 1,28,396.00\nAmount Chargeable (in words)\nE. & O.E\nIndian Rupees One Lakh Twenty Eight Thousand Three Hundred Ninety Six Only\nHSN/SAC\nTaxable\nIGST\nTotal\nValue\nRate\nAmount\nTax Amount\n23022020\n1,22,281.80\n5%\n6,114.09\n6,114.09\nTotal\n1,22,281.80\n6,114.09\n6,114.09\nTax Amount (in words) :\nIndian Rupees Six Thousand One Hundred Fourteen and Nine paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
       "tokens": 282
     }

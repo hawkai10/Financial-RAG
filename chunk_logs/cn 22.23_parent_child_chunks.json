@@ -7,7 +7,7 @@
   "children_total_tokens": 288,
   "parents": [
     {
-      "parent_id": 216629383236947968,
+      "parent_id": 216829389122310144,
       "document_id": "cn 22.23",
       "page_start": 789,
       "page_end": 789,
@@ -17,8 +17,8 @@
   ],
   "children": [
     {
-      "child_id": 216629383287279616,
-      "parent_id": 216629383236947968,
+      "child_id": 216829389160058880,
+      "parent_id": 216829389122310144,
       "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20)\nChakulia , PO-Chakulia\nDist East Singh Bhum\nGSTNO-20AAIPL4886F1ZQ\nGSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20\nCredit Note No.\nCN/6\nDated\n2-Jun-22\nMode/Terms of Payment\nOriginal Invoice No. & Date.\nOther References\nBuyer's Order No.\nDated\nDispatch Doc No.\nDispatched through\nDestination\nTerms of Delivery\nConsignee (Ship to)\nSeetharama Oil Industies (P) Ltd\nPenubaka Rajam, Dist -Sirkakulam\nGSTIN/UIN\n: 37AAZCS5779A1ZM\nState Name\n: Andhra Pradesh, Code : 37\nBuyer (Bill to)\nSeetharama Oil Industies (P) Ltd\nPenubaka Rajam, Dist -Sirkakulam\nGSTIN/UIN\n: 37AAZCS5779A1ZM\nState Name\n: Andhra Pradesh, Code : 37\nPlace of Supply\n: Andhra Pradesh\nContact\n: 9948666349\nSl No.\nDescription of Goods\nHSN/SAC\nGST Rate\nQuantity\nRate\nper\nAmount\n1\nBran\n23022020\n5 %\n2,38,056.00\nI.G.S.T.\n11,902.80\nRound Off\n0.20\nTotal\n₹ 2,49,959.00\nE. & O.E\nAmount Chargeable (in words)\nIndian Rupees Two Lakh Forty Nine Thousand Nine Hundred Fifty Nine Only\nHSN/SAC\nTaxable Value\nRate\nIGST Amount\nTotal Tax Amount\n23022020\n2,38,056.00\n5%\n11,902.80\n11,902.80\nTotal\n2,38,056.00\n11,902.80\n11,902.80\nTax Amount (in words) :\nIndian Rupees Eleven Thousand Nine Hundred Two and Eighty paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
       "tokens": 288
     }

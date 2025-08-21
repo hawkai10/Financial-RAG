@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SearchIcon } from './icons/SearchIcon';
-import { fetchExampleQueries, fetchRecentDocuments } from '../services/geminiService';
+import { fetchRecentDocuments } from '../services/geminiService';
 
 interface HomeScreenProps {
   searchQuery: string;
@@ -59,29 +59,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   onSearchQueryChange, 
   onSearchSubmit 
 }) => {
-  const [exampleQueries, setExampleQueries] = useState<string[]>([]);
   const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
-  const [isLoadingQueries, setIsLoadingQueries] = useState(true);
   const [isLoadingDocs, setIsLoadingDocs] = useState(true);
 
-  // Load example queries and recent documents on mount
+  // Load recent documents on mount
   useEffect(() => {
     const loadData = async () => {
-      try {
-        // Load example queries
-        const queries = await fetchExampleQueries();
-        setExampleQueries(queries);
-      } catch (error) {
-        console.error('Failed to load example queries:', error);
-        setExampleQueries([
-          "What are the main topics covered in the documents?",
-          "Can you summarize the key information available?",
-          "What important details should I know from these documents?"
-        ]);
-      } finally {
-        setIsLoadingQueries(false);
-      }
-
       try {
         // Load recent documents
         const docs = await fetchRecentDocuments();
@@ -101,12 +84,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     if (event.key === 'Enter') {
       onSearchSubmit();
     }
-  };
-
-  const handleExampleQueryClick = (query: string) => {
-    onSearchQueryChange(query);
-    // Auto-submit when clicking example query
-    setTimeout(() => onSearchSubmit(), 100);
   };
 
   const handleDocumentClick = (doc: RecentDocument) => {
@@ -190,24 +167,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         >
           RagSearch
         </button>
-
-        {/* Example queries */}
-        {!isLoadingQueries && exampleQueries.length > 0 && (
-          <div className="w-full max-w-4xl mb-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {exampleQueries.map((query, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleExampleQueryClick(query)}
-                  className="p-4 text-left bg-white border border-gray-200 rounded-lg hover:border-orange-300 hover:shadow-md transition-all text-sm text-gray-700 hover:text-gray-900"
-                >
-                  <SearchIcon className="w-4 h-4 text-orange-500 mb-2" />
-                  {query}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Recent documents section */}
         <div className="w-full max-w-4xl">

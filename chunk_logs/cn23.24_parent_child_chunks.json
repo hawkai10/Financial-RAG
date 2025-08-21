@@ -2,25 +2,31 @@
   "document_id": "cn23.24",
   "source_json": "..\\New folder\\cn23.24\\cn23.24.json",
   "parents_count": 1,
-  "children_count": 1,
-  "parents_total_tokens": 297,
-  "children_total_tokens": 297,
+  "children_count": 2,
+  "parents_total_tokens": 302,
+  "children_total_tokens": 423,
   "parents": [
     {
-      "parent_id": 216629438970859520,
+      "parent_id": 216829435775553536,
       "document_id": "cn23.24",
       "page_start": 509,
       "page_end": 509,
-      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) Credit Note No. Dated \n Chakulia, PO-Chakulia CN/108 15-Dec-23 \n Dist East Singh Bhum Mode/Terms of Payment \n GSTNO-20AAIPL4886F1ZQ \n GSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20 Original Invoice No. & Date. Other References \n Consignee (Ship to) Dated \n Sriyansh Solvent Solution Pvt.Ltd. Buyer's Order No. \n At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur, Dispatch Doc No. \n Odisha \n GSTIN/UIN Dispatched through Destination \n State Name \n Buyer (Bill to)\nSriyansh Solvent Solution Pvt.Ltd. Terms of Delivery \n At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur, \n Odisha\nGSTIN/UIN \n : 21ABFCS9819Q1ZN\nState Name\n: Odisha, Code: 21 \n Place of Supply\n: Odisha \n Contact : 9040358285 \n Description of Goods HSN/SAC GST Rate Amount \n SI\nNo. Rate Quantity per \n 1\n Bran 23022020 5 % 1,47,393.00 \n I.G.S.T. 7,369.65 \n Round Off 0.35 \n Total ₹ 1,54,763.00 \n Amount Chargeable (in words) E. & O.E \n Indian Rupees One Lakh Fifty Four Thousand Seven Hundred Sixty Three Only \n HSN/SAC Taxable IGST Total \n Value Rate Amount Tax Amount \n 23022020 1,47,393.00 5\\% 7,369.65 7,369.65 \n Total 1,47,393.00 7,369.65 7,369.65 \n Tax Amount (in words) : Indian Rupees Seven Thousand Three Hundred Sixty Nine and Sixty Five paise Only \n for Bhartiya Enterprises A/c (Yr 19-20) \n Authorised Signatory",
-      "tokens": 297
+      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) \n Credit Note No. \n CN/108 \n Dated \n 15-Dec-23 \n Chakulia , PO-Chakulia \n Mode/Terms of Payment \n Dist East Singh Bhum \n Original Invoice No. & Date. \n Other References \n GSTNO-20AAIPL4886F1ZQ \n GSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20 \n Buyer's Order No. \n Dated \n Consignee (Ship to) \n Sriyansh Solvent Solution Pvt.Ltd. \n Dispatch Doc No. \n At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur,\n Odisha \n GSTIN/UIN : 21ABFCS9819Q1ZN\nState Name : Odisha, Code : 21 \n Dispatched through \n Destination \n Buyer (Bill to) \n Sriyansh Solvent Solution Pvt.Ltd. \n Terms of Delivery \n At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur,\n Odisha \n GSTIN/UIN : 21ABFCS9819Q1ZN\n State Name : Odisha, Code : 21\n Place of Supply : Odisha\n Contact : 9040358285 \n SI No. \n Description of Goods \n HSN/SAC \n GST Rate \n Quantity \n Rate per \n Amount \n 1 \n Bran \n 23022020 \n 5 % \n 1,47,393.00 \n I.G.S.T. \n 7,369.65 \n Round Off \n 0.35 \n Total \n ₹ 1,54,763.00 \n Amount Chargeable (in words) \n E. & O.E \n Indian Rupees One Lakh Fifty Four Thousand Seven Hundred Sixty Three Only \n HSN/SAC \n Taxable Value \n IGST Rate \n Amount Total Tax Amount \n 23022020 \n 1,47,393.00 \n 5% \n 7,369.65 7,369.65 \n Total 1,47,393.00 \n 7,369.65 7,369.65 \n Tax Amount (in words) : Indian Rupees Seven Thousand Three Hundred Sixty Nine and Sixty Five paise Only \n for Bhartiya Enterprises A/c (Yr 19-20) \n Authorised Signatory",
+      "tokens": 302
     }
   ],
   "children": [
     {
-      "child_id": 216629439079911424,
-      "parent_id": 216629438970859520,
-      "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20) Credit Note No. Dated\nChakulia, PO-Chakulia CN/108 15-Dec-23\nDist East Singh Bhum Mode/Terms of Payment\nGSTNO-20AAIPL4886F1ZQ\nGSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20 Original Invoice No. & Date. Other References\nConsignee (Ship to) Dated\nSriyansh Solvent Solution Pvt.Ltd. Buyer's Order No.\nAt-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur, Dispatch Doc No.\nOdisha\nGSTIN/UIN Dispatched through Destination\nState Name\nBuyer (Bill to)\nSriyansh Solvent Solution Pvt.Ltd. Terms of Delivery\nAt-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur,\nOdisha\nGSTIN/UIN\n: 21ABFCS9819Q1ZN\nState Name\n: Odisha, Code: 21\nPlace of Supply\n: Odisha\nContact : 9040358285\nDescription of Goods HSN/SAC GST Rate Amount\nSI\nNo. Rate Quantity per\n1\nBran 23022020 5 % 1,47,393.00\nI.G.S.T. 7,369.65\nRound Off 0.35\nTotal ₹ 1,54,763.00\nAmount Chargeable (in words) E. & O.E\nIndian Rupees One Lakh Fifty Four Thousand Seven Hundred Sixty Three Only\nHSN/SAC Taxable IGST Total\nValue Rate Amount Tax Amount\n23022020 1,47,393.00 5\\% 7,369.65 7,369.65\nTotal 1,47,393.00 7,369.65 7,369.65\nTax Amount (in words) : Indian Rupees Seven Thousand Three Hundred Sixty Nine and Sixty Five paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
-      "tokens": 297
+      "child_id": 216829435817496576,
+      "parent_id": 216829435775553536,
+      "content": "Tax Invoice \n Bhartiya Enterprises A/c (Yr 19-20) \n Credit Note No CN/108 \n Dated \n 15-Dec-23 \n Chakulia , PO-Chakulia \n Mode/Terms of Payment \n Dist East Singh Bhum \n Original Invoice No & Date Other References \n GSTNO-20AAIPL4886F1ZQ \n GSTIN/UIN: 20AAIPL4886F1ZQ\nState Name : Jharkhand, Code : 20 \n Buyer's Order No Dated \n Consignee (Ship to) \n Sriyansh Solvent Solution Pvt.Ltd Dispatch Doc No At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur,\n Odisha \n GSTIN/UIN : 21ABFCS9819Q1ZN\nState Name : Odisha, Code : 21 \n Dispatched through \n Destination \n Buyer (Bill to) \n Sriyansh Solvent Solution Pvt.Ltd Terms of Delivery \n At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur,\n Odisha \n GSTIN/UIN : 21ABFCS9819Q1ZN\n State Name : Odisha, Code : 21\n Place of Supply : Odisha\n Contact : 9040358285 \n SI No Description of Goods \n HSN/SAC \n GST Rate \n Quantity \n Rate per \n Amount \n 1 \n Bran \n 23022020 \n 5 % \n 1,47,393.00 \n I.G.S.T 7,369.65 \n Round Off \n 0.35 \n Total \n ₹ 1,54,763.00 \n Amount Chargeable (in words) \n E",
+      "tokens": 206
+    },
+    {
+      "child_id": 216829435817496577,
+      "parent_id": 216829435775553536,
+      "content": "Via-Binka, Dist-Sonepur, Odisha GSTIN/UIN : 21ABFCS9819Q1ZN State Name : Odisha, Code : 21 Dispatched through Destination Buyer (Bill to) Sriyansh Solvent Solution Pvt.Ltd Terms of Delivery At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur, Odisha GSTIN/UIN : 21ABFCS9819Q1ZN State Name : Odisha, Code : 21 Place of Supply : Odisha Contact : 9040358285 SI No Description of Goods HSN/SAC GST Rate Quantity Rate per Amount 1 Bran 23022020 5 % 1,47,393.00 I.G.S.T 7,369.65 Round Off 0.35 Total ₹ 1,54,763.00 Amount Chargeable (in words) E & O.E \n Indian Rupees One Lakh Fifty Four Thousand Seven Hundred Sixty Three Only \n HSN/SAC \n Taxable Value \n IGST Rate \n Amount Total Tax Amount \n 23022020 \n 1,47,393.00 \n 5% \n 7,369.65 7,369.65 \n Total 1,47,393.00 \n 7,369.65 7,369.65 \n Tax Amount (in words) : Indian Rupees Seven Thousand Three Hundred Sixty Nine and Sixty Five paise Only \n for Bhartiya Enterprises A/c (Yr 19-20) \n Authorised Signatory",
+      "tokens": 217
     }
   ]
 }

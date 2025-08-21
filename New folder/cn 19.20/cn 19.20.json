@@ -1,0 +1,96 @@
+{
+  "blocks": [
+    {
+      "id": "/page/0/Form/0",
+      "block_type": "Form",
+      "html": "<table>\n<tr>\n<th colspan=\"10\">Tax Invoice</th>\n</tr>\n<tr>\n<td colspan=\"4\">Bhartiya Enterprises A/c (Yr 19-20)<br/>Chakulia , PO-Chakulia<br/>Dist East Singh Bhum</td>\n<td colspan=\"3\">Credit Note No.<br/>10</td>\n<td colspan=\"3\">Dated<br/>23-Oct-19</td>\n</tr>\n<tr>\n<td colspan=\"4\">GSTNO-20AAIPL4886F1ZQ<br/>GSTIN/UIN: 20AAIPL4886F1ZQ<br/>State Name : Jharkhand, Code : 20</td>\n<td colspan=\"3\">Original Invoice No. & Date.<br/>79/19-20 dt. 21-Oct-19</td>\n<td colspan=\"3\">Mode/Terms of Payment<br/>Other References</td>\n</tr>\n<tr>\n<td colspan=\"4\">Consignee (Ship to)<br/>Sri Venkta Srinivasa Oils Pvt Ltd</td>\n<td colspan=\"3\">Buyer's Order No.</td>\n<td colspan=\"3\">Dated</td>\n</tr>\n<tr>\n<td colspan=\"4\">Rajam</td>\n<td colspan=\"3\">Dispatch Doc No.</td>\n<td colspan=\"3\"></td>\n</tr>\n<tr>\n<td colspan=\"4\">GSTIN/UIN : 37AAOCS7160A1ZA<br/>State Name : Andhra Pradesh, Code : 37</td>\n<td colspan=\"3\">Dispatched through</td>\n<td colspan=\"3\">Destination</td>\n</tr>\n<tr>\n<td colspan=\"4\">Buyer (Bill to)<br/>Sri Venkta Srinivasa Oils Pvt Ltd</td>\n<td colspan=\"3\">Terms of Delivery</td>\n<td colspan=\"3\"></td>\n</tr>\n<tr>\n<td colspan=\"4\">Rajam</td>\n<td colspan=\"6\"></td>\n</tr>\n<tr>\n<td colspan=\"4\">GSTIN/UIN : 37AAOCS7160A1ZA<br/>State Name : Andhra Pradesh, Code : 37<br/>Place of Supply : Andhra Pradesh</td>\n<td colspan=\"6\"></td>\n</tr>\n</table>\n<table>\n<tr>\n<th>Sl No.</th>\n<th>Description of Goods</th>\n<th>HSN/SAC</th>\n<th>GST Rate</th>\n<th>Quantity</th>\n<th>Rate</th>\n<th>per</th>\n<th>Amount</th>\n</tr>\n<tr>\n<td>1</td>\n<td>Bran</td>\n<td>23022020</td>\n<td>5 %</td>\n<td></td>\n<td></td>\n<td></td>\n<td>49,479.05</td>\n</tr>\n<tr>\n<td colspan=\"7\">I.G.S.T.</td>\n<td>2,473.95</td>\n</tr>\n<tr>\n<td colspan=\"7\" style=\"text-align:right;\">Total</td>\n<td>₹ 51,953.00<br/><i>E. & O.E</i></td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Amount Chargeable (in words)</td>\n<td>Indian Rupees Fifty One Thousand Nine Hundred Fifty Three Only</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>HSN/SAC</td>\n<td>Taxable Value</td>\n<td>Rate</td>\n<td>IGST Amount</td>\n<td>Total Tax Amount</td>\n</tr>\n<tr>\n<td>23022020</td>\n<td>49,479.05</td>\n<td>5%</td>\n<td>2,473.95</td>\n<td>2,473.95</td>\n</tr>\n<tr>\n<td>Total</td>\n<td>49,479.05</td>\n<td></td>\n<td>2,473.95</td>\n<td>2,473.95</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Tax Amount (in words) :</td>\n<td>Indian Rupees Two Thousand Four Hundred Seventy Three and Ninety Five paise Only<br/>for Bhartiya Enterprises A/c (Yr 19-20)</td>\n</tr>\n<tr>\n<td></td>\n<td>Authorised Signatory</td>\n</tr>\n</table>",
+      "page": 737,
+      "polygon": [
+        [
+          34.26022067666054,
+          19.94317626953125
+        ],
+        [
+          561.9963490962982,
+          19.94317626953125
+        ],
+        [
+          560.8342397212982,
+          797.9554481506348
+        ],
+        [
+          33.09811130166054,
+          797.9554481506348
+        ]
+      ],
+      "bbox": [
+        33.09811130166054,
+        19.94317626953125,
+        561.9963490962982,
+        797.9554481506348
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    },
+    {
+      "id": "/page/0/PageFooter/1",
+      "block_type": "PageFooter",
+      "html": "",
+      "page": 737,
+      "polygon": [
+        [
+          220.1418636739254,
+          804.296782374382
+        ],
+        [
+          365.5966019630432,
+          802.652251124382
+        ],
+        [
+          365.5966019630432,
+          813.3154563903809
+        ],
+        [
+          220.1418636739254,
+          814.4747284650803
+        ]
+      ],
+      "bbox": [
+        220.1418636739254,
+        802.652251124382,
+        365.5966019630432,
+        814.4747284650803
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    }
+  ],
+  "page_info": {
+    "0": {
+      "bbox": [
+        0.0,
+        0.0,
+        595.0,
+        842.0
+      ],
+      "polygon": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          595.0,
+          0.0
+        ],
+        [
+          595.0,
+          842.0
+        ],
+        [
+          0.0,
+          842.0
+        ]
+      ]
+    }
+  }
+}

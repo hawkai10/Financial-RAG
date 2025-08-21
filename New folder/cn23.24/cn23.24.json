@@ -1,0 +1,96 @@
+{
+  "blocks": [
+    {
+      "id": "/page/0/Form/0",
+      "block_type": "Form",
+      "html": "<table>\n<tbody>\n<tr>\n<th colspan=\"6\"><b>Tax Invoice</b></th>\n</tr>\n<tr>\n<td><b>Bhartiya Enterprises A/c (Yr 19-20)</b></td>\n<td></td>\n<td>Credit Note No.</td>\n<td><b>CN/108</b></td>\n<td>Dated</td>\n<td><b>15-Dec-23</b></td>\n</tr>\n<tr>\n<td>Chakulia , PO-Chakulia</td>\n<td></td>\n<td></td>\n<td></td>\n<td>Mode/Terms of Payment</td>\n<td></td>\n</tr>\n<tr>\n<td>Dist East Singh Bhum</td>\n<td></td>\n<td>Original Invoice No. & Date.</td>\n<td></td>\n<td>Other References</td>\n<td></td>\n</tr>\n<tr>\n<td>GSTNO-20AAIPL4886F1ZQ</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>GSTIN/UIN: 20AAIPL4886F1ZQ<br/>State Name : Jharkhand, Code : 20</td>\n<td></td>\n<td>Buyer's Order No.</td>\n<td></td>\n<td>Dated</td>\n<td></td>\n</tr>\n<tr>\n<td>Consignee (Ship to)</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td><b>Sriyansh Solvent Solution Pvt.Ltd.</b></td>\n<td></td>\n<td>Dispatch Doc No.</td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur,\n    Odisha</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td><b>GSTIN/UIN</b> : 21ABFCS9819Q1ZN<br/>State Name : Odisha, Code : 21</td>\n<td></td>\n<td>Dispatched through</td>\n<td></td>\n<td>Destination</td>\n<td></td>\n</tr>\n<tr>\n<td>Buyer (Bill to)</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td><b>Sriyansh Solvent Solution Pvt.Ltd.</b></td>\n<td></td>\n<td>Terms of Delivery</td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>At-Kamira, P.O-Singhijuba, Via-Binka, Dist-Sonepur,\n    Odisha</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td><b>GSTIN/UIN</b> : 21ABFCS9819Q1ZN<br/><b>State Name</b> : Odisha, Code : 21<br/><b>Place of Supply</b> : Odisha<br/><b>Contact</b> : 9040358285</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>SI No.</td>\n<td>Description of Goods</td>\n<td>HSN/SAC</td>\n<td>GST Rate</td>\n<td>Quantity</td>\n<td>Rate per</td>\n<td>Amount</td>\n</tr>\n<tr>\n<td>1</td>\n<td>Bran</td>\n<td>23022020</td>\n<td>5 %</td>\n<td></td>\n<td></td>\n<td>1,47,393.00</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td><i>I.G.S.T.</i></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>7,369.65</td>\n</tr>\n<tr>\n<td></td>\n<td><i>Round Off</i></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>0.35</td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"7\"></td>\n</tr>\n<tr>\n<td colspan=\"6\">Total</td>\n<td>₹ 1,54,763.00</td>\n</tr>\n<tr>\n<td>Amount Chargeable (in words)</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>E. & O.E</td>\n</tr>\n<tr>\n<td colspan=\"7\">Indian Rupees One Lakh Fifty Four Thousand Seven Hundred Sixty Three Only</td>\n</tr>\n<tr>\n<td colspan=\"2\">HSN/SAC</td>\n<td></td>\n<td></td>\n<td>Taxable Value</td>\n<td>IGST Rate</td>\n<td>Amount Total Tax Amount</td>\n</tr>\n<tr>\n<td colspan=\"2\">23022020</td>\n<td></td>\n<td></td>\n<td>1,47,393.00</td>\n<td>5%</td>\n<td>7,369.65 7,369.65</td>\n</tr>\n<tr>\n<td colspan=\"2\"></td>\n<td></td>\n<td></td>\n<td><b>Total</b> 1,47,393.00</td>\n<td></td>\n<td>7,369.65 7,369.65</td>\n</tr>\n<tr>\n<td colspan=\"7\">Tax Amount (in words) : Indian Rupees Seven Thousand Three Hundred Sixty Nine and Sixty Five paise Only</td>\n</tr>\n<tr>\n<td colspan=\"7\">for Bhartiya Enterprises A/c (Yr 19-20)</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>Authorised Signatory</td>\n</tr>\n</tbody>\n</table>",
+      "page": 509,
+      "polygon": [
+        [
+          32.222921914357684,
+          16.495102404274263
+        ],
+        [
+          563.5264483627204,
+          16.495102404274263
+        ],
+        [
+          563.5264483627204,
+          799.2626892252894
+        ],
+        [
+          32.222921914357684,
+          799.2626892252894
+        ]
+      ],
+      "bbox": [
+        32.222921914357684,
+        16.495102404274263,
+        563.5264483627204,
+        799.2626892252894
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    },
+    {
+      "id": "/page/0/PageFooter/1",
+      "block_type": "PageFooter",
+      "html": "",
+      "page": 509,
+      "polygon": [
+        [
+          217.31738035264485,
+          802.2617987533392
+        ],
+        [
+          367.19143576826195,
+          802.2617987533392
+        ],
+        [
+          367.19143576826195,
+          812.7878894805908
+        ],
+        [
+          217.31738035264485,
+          814.4324207305908
+        ]
+      ],
+      "bbox": [
+        217.31738035264485,
+        802.2617987533392,
+        367.19143576826195,
+        814.4324207305908
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    }
+  ],
+  "page_info": {
+    "0": {
+      "bbox": [
+        0.0,
+        0.0,
+        595.0,
+        842.0
+      ],
+      "polygon": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          595.0,
+          0.0
+        ],
+        [
+          595.0,
+          842.0
+        ],
+        [
+          0.0,
+          842.0
+        ]
+      ]
+    }
+  }
+}

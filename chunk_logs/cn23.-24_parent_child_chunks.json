@@ -7,7 +7,7 @@
   "children_total_tokens": 274,
   "parents": [
     {
-      "parent_id": 216629423691010048,
+      "parent_id": 216829423301693440,
       "document_id": "cn23.-24",
       "page_start": 820,
       "page_end": 820,
@@ -17,8 +17,8 @@
   ],
   "children": [
     {
-      "child_id": 216629423745536000,
-      "parent_id": 216629423691010048,
+      "child_id": 216829423343636480,
+      "parent_id": 216829423301693440,
       "content": "Tax Invoice\nBhartiya Enterprises A/c (Yr 19-20)\nCredit Note No.\nCN/191\nDated\n31-Mar-24\nChakulia , PO-Chakulia\nMode/Terms of Payment\nDist East Singh Bhum\nGSTNO-20AAIPL4886F1ZQ\nGSTIN/UIN: 20AAIPL4886F1ZQ\nOriginal Invoice No. & Date.\nOther References\nState Name : Jharkhand, Code : 20\nConsignee (Ship to)\nBuyer's Order No.\nDated\nJyotirmayee Foods Private Limited\nSurampalem Road Peddapuram\nDispatch Doc No.\nGSTIN/UIN : 37AABCJ7824R1ZU\nState Name : Andhra Pradesh, Code : 37\nDispatched through\nDestination\nBuyer (Bill to)\nJyotirmayee Foods Private Limited\nSurampalem Road Peddapuram\nTerms of Delivery\nGSTIN/UIN : 37AABCJ7824R1ZU\nState Name : Andhra Pradesh, Code : 37\nPlace of Supply : Andhra Pradesh\nSl No.\nDescription of Goods\nHSN/SAC\nGST Rate\nQuantity\nRate\nper\nAmount\n1\nBran\n23022020\n5 %\n95,370.00\nI.G.S.T.\n4,768.50\nRound Off\n0.50\nTotal\n₹ 1,00,139.00\nAmount Chargeable (in words)\nE. & O.E\nIndian Rupees One Lakh One Hundred Thirty Nine Only\nHSN/SAC\nTaxable Value\nRate\nIGST Amount\nTotal Tax Amount\n23022020\n95,370.00\n5%\n4,768.50\n4,768.50\nTotal\n95,370.00\n4,768.50\n4,768.50\nTax Amount (in words) : Indian Rupees Four Thousand Seven Hundred Sixty Eight and Fifty paise Only\nfor Bhartiya Enterprises A/c (Yr 19-20)\nAuthorised Signatory",
       "tokens": 274
     }

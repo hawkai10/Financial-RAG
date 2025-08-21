@@ -597,19 +597,16 @@ async def _retrieve_children_hybrid(query: str, max_children: int = 24) -> Tuple
         slug = re.sub(r'[^a-z0-9]+', '_', str(name).lower()).strip('_')
         return f"children_{slug}"
     # Build embedders and vector stores for both models
+    # Permanently enforce local embedder
     try:
-        if os.getenv('FORCE_LOCAL_EMBEDDER', 'false').lower() != 'true':
-            from sentence_transformers import SentenceTransformer  # type: ignore
-        else:
-            raise ImportError("Forced local embedder")
+        raise ImportError("Permanently using local embedder")
     except ImportError:
-        # Import our local wrapper instead
         import sys
         from pathlib import Path as _PathLocal
         sys.path.insert(0, str(_PathLocal(__file__).resolve().parent))
         from local_embedder import SentenceTransformerWrapper as SentenceTransformer  # type: ignore
     from pathlib import Path as _Path
-    force_local = os.getenv('FORCE_LOCAL_EMBEDDER', 'false').lower() == 'true'
+    force_local = True  # Permanently local
     for i, m in enumerate(emb_names):
         try:
             target = None
@@ -634,7 +631,7 @@ async def _retrieve_children_hybrid(query: str, max_children: int = 24) -> Tuple
         vec = get_child_vector_store(collection=coll, table=None)
         # Diagnostic: log vector store config if available (best effort)
         try:
-            backend = os.getenv("CHILD_VECTOR_BACKEND", "chroma").lower()
+            backend = "chroma"  # Permanently chroma
             if hasattr(vec, "collection_name") and hasattr(vec, "persist_dir"):
                 size = vec.count() if hasattr(vec, "count") else "n/a"
                 logger.info(

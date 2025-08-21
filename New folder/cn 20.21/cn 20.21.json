@@ -1,0 +1,96 @@
+{
+  "blocks": [
+    {
+      "id": "/page/0/Form/0",
+      "block_type": "Form",
+      "html": "<table>\n<tr>\n<th></th>\n<th>Tax Invoice</th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<td>Bhartiya Enterprises A/c (Yr 19-20)</td>\n<td></td>\n<td colspan=\"3\">Credit Note No.</td>\n<td colspan=\"3\">Dated</td>\n</tr>\n<tr>\n<td colspan=\"2\">Chakulia , PO-Chakulia</td>\n<td colspan=\"2\">4</td>\n<td></td>\n<td colspan=\"2\">18-Feb-21</td>\n</tr>\n<tr>\n<td colspan=\"2\">Dist East Singh Bhum</td>\n<td colspan=\"2\"></td>\n<td></td>\n<td colspan=\"2\">Mode/Terms of Payment</td>\n</tr>\n<tr>\n<td>GSTNO-20AAIPL4886F1ZQ</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>GSTIN/UIN: 20AAIPL4886F1ZQ</td>\n<td></td>\n<td></td>\n<td>Original Invoice No. & Date.</td>\n<td></td>\n<td>Other References</td>\n<td></td>\n</tr>\n<tr>\n<td colspan=\"2\">State Name : Jharkhand, Code : 20</td>\n<td></td>\n<td>125 dt. 12-Feb-21</td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td colspan=\"2\">Consignee (Ship to)</td>\n<td colspan=\"2\">Buyer's Order No.</td>\n<td></td>\n<td colspan=\"2\">Dated</td>\n</tr>\n<tr>\n<td>Jay Shree Solvex Pvt Ltd</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>Durg, Cg</td>\n<td></td>\n<td>Dispatch Doc No.</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>GSTIN/UIN</td>\n<td>: 22AABCJ4679A1ZX</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>State Name</td>\n<td>: Chhattisgarh, Code : 22</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td>Dispatched through</td>\n<td></td>\n<td>Destination</td>\n<td></td>\n</tr>\n<tr>\n<td colspan=\"2\">Buyer (Bill to)</td>\n<td colspan=\"2\"></td>\n<td></td>\n<td colspan=\"2\"></td>\n</tr>\n<tr>\n<td colspan=\"2\" rowspan=\"3\">Jay Shree Solvex Pvt Ltd<br/>Durg, Cg<br/>GSTIN/UIN : 22AABCJ4679A1ZX</td>\n<td colspan=\"3\">Terms of Delivery</td>\n<td colspan=\"3\"></td>\n</tr>\n<tr>\n<td colspan=\"4\"></td>\n</tr>\n<tr>\n<td colspan=\"4\"></td>\n</tr>\n<tr>\n<td>State Name</td>\n<td>: Chhattisgarh, Code : 22</td>\n<td colspan=\"3\"></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>Place of Supply</td>\n<td>: Chhattisgarh</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>Sl</td>\n<td>Description of Goods</td>\n<td>HSN/SAC</td>\n<td>GST</td>\n<td>Quantity</td>\n<td>Rate</td>\n<td>per</td>\n<td>Amount</td>\n</tr>\n<tr>\n<td>No.</td>\n<td></td>\n<td></td>\n<td>Rate</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>1</td>\n<td>Bran</td>\n<td>23022020</td>\n<td>5 %</td>\n<td></td>\n<td></td>\n<td></td>\n<td>1,22,281.80</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>6,114.09</td>\n</tr>\n<tr>\n<td></td>\n<td>I.G.S.T.<br/>Round Off</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>0.11</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n<th></th>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>Total</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>₹ 1,28,396.00</td>\n</tr>\n<tr>\n<td>Amount Chargeable (in words)</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>E. & O.E</td>\n</tr>\n<tr>\n<td>Indian Rupees One Lakh Twenty Eight Thousand Three Hundred Ninety Six Only</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td>HSN/SAC</td>\n<td></td>\n<td>Taxable</td>\n<td></td>\n<td>IGST</td>\n<td></td>\n<td>Total</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td>Value</td>\n<td>Rate</td>\n<td>Amount</td>\n<td></td>\n<td>Tax Amount</td>\n</tr>\n<tr>\n<td>23022020</td>\n<td></td>\n<td></td>\n<td>1,22,281.80</td>\n<td>5%</td>\n<td>6,114.09</td>\n<td></td>\n<td>6,114.09</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td>Total</td>\n<td>1,22,281.80</td>\n<td></td>\n<td>6,114.09</td>\n<td></td>\n<td>6,114.09</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td>Tax Amount (in words) :</td>\n<td>Indian Rupees Six Thousand One Hundred Fourteen and Nine paise Only</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>for Bhartiya Enterprises A/c (Yr 19-20)</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>Authorised Signatory</td>\n</tr>\n</table>",
+      "page": 673,
+      "polygon": [
+        [
+          33.500618636608124,
+          19.94317626953125
+        ],
+        [
+          562.4526032805443,
+          19.94317626953125
+        ],
+        [
+          561.2904939055443,
+          797.9554481506348
+        ],
+        [
+          32.338509261608124,
+          797.9554481506348
+        ]
+      ],
+      "bbox": [
+        32.338509261608124,
+        19.94317626953125,
+        562.4526032805443,
+        797.9554481506348
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    },
+    {
+      "id": "/page/0/PageFooter/1",
+      "block_type": "PageFooter",
+      "html": "",
+      "page": 673,
+      "polygon": [
+        [
+          219.99933078885078,
+          804.3234317302704
+        ],
+        [
+          365.7871186733246,
+          802.6789004802704
+        ],
+        [
+          365.7871186733246,
+          813.3154563903809
+        ],
+        [
+          219.99933078885078,
+          814.3560359477997
+        ]
+      ],
+      "bbox": [
+        219.99933078885078,
+        802.6789004802704,
+        365.7871186733246,
+        814.3560359477997
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    }
+  ],
+  "page_info": {
+    "0": {
+      "bbox": [
+        0.0,
+        0.0,
+        595.0,
+        842.0
+      ],
+      "polygon": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          595.0,
+          0.0
+        ],
+        [
+          595.0,
+          842.0
+        ],
+        [
+          0.0,
+          842.0
+        ]
+      ]
+    }
+  }
+}

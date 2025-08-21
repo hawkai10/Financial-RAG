@@ -1,0 +1,96 @@
+{
+  "blocks": [
+    {
+      "id": "/page/0/Form/0",
+      "block_type": "Form",
+      "html": "<table>\n<tr>\n<td>Tax Invoice</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Bhartiya Enterprises A/c (Yr 19-20)</td>\n</tr>\n<tr>\n<td>Chakulia , PO-Chakulia</td>\n</tr>\n<tr>\n<td>Dist East Singh Bhum</td>\n</tr>\n<tr>\n<td>GSTNO-20AAIPL4886F1ZQ</td>\n</tr>\n<tr>\n<td>GSTIN/UIN: 20AAIPL4886F1ZQ</td>\n</tr>\n<tr>\n<td>State Name : Jharkhand, Code : 20</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Credit Note No.</td>\n<td>CN/6</td>\n<td>Dated</td>\n<td>2-Jun-22</td>\n</tr>\n<tr>\n<td>Mode/Terms of Payment</td>\n</tr>\n<tr>\n<td>Original Invoice No. & Date.</td>\n<td>Other References</td>\n</tr>\n<tr>\n<td>Buyer's Order No.</td>\n<td>Dated</td>\n</tr>\n<tr>\n<td>Dispatch Doc No.</td>\n</tr>\n<tr>\n<td>Dispatched through</td>\n<td>Destination</td>\n</tr>\n<tr>\n<td>Terms of Delivery</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Consignee (Ship to)</td>\n</tr>\n<tr>\n<td>Seetharama Oil Industies (P) Ltd</td>\n</tr>\n<tr>\n<td>Penubaka Rajam, Dist -Sirkakulam</td>\n</tr>\n<tr>\n<td>GSTIN/UIN</td>\n<td>: 37AAZCS5779A1ZM</td>\n</tr>\n<tr>\n<td>State Name</td>\n<td>: Andhra Pradesh, Code : 37</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Buyer (Bill to)</td>\n</tr>\n<tr>\n<td>Seetharama Oil Industies (P) Ltd</td>\n</tr>\n<tr>\n<td>Penubaka Rajam, Dist -Sirkakulam</td>\n</tr>\n<tr>\n<td>GSTIN/UIN</td>\n<td>: 37AAZCS5779A1ZM</td>\n</tr>\n<tr>\n<td>State Name</td>\n<td>: Andhra Pradesh, Code : 37</td>\n</tr>\n<tr>\n<td>Place of Supply</td>\n<td>: Andhra Pradesh</td>\n</tr>\n<tr>\n<td>Contact</td>\n<td>: 9948666349</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Sl No.</td>\n<td>Description of Goods</td>\n<td>HSN/SAC</td>\n<td>GST Rate</td>\n<td>Quantity</td>\n<td>Rate</td>\n<td>per</td>\n<td>Amount</td>\n</tr>\n<tr>\n<td>1</td>\n<td>Bran</td>\n<td>23022020</td>\n<td>5 %</td>\n<td></td>\n<td></td>\n<td></td>\n<td>2,38,056.00</td>\n</tr>\n<tr>\n<td></td>\n<td>I.G.S.T.</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>11,902.80</td>\n</tr>\n<tr>\n<td></td>\n<td>Round Off</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>0.20</td>\n</tr>\n<tr>\n<td></td>\n<td>Total</td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>₹ 2,49,959.00</td>\n</tr>\n<tr>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td></td>\n<td>E. & O.E</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Amount Chargeable (in words)</td>\n<td>Indian Rupees Two Lakh Forty Nine Thousand Nine Hundred Fifty Nine Only</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>HSN/SAC</td>\n<td>Taxable Value</td>\n<td>Rate</td>\n<td>IGST Amount</td>\n<td>Total Tax Amount</td>\n</tr>\n<tr>\n<td>23022020</td>\n<td>2,38,056.00</td>\n<td>5%</td>\n<td>11,902.80</td>\n<td>11,902.80</td>\n</tr>\n<tr>\n<td>Total</td>\n<td>2,38,056.00</td>\n<td></td>\n<td>11,902.80</td>\n<td>11,902.80</td>\n</tr>\n</table>\n<table>\n<tr>\n<td>Tax Amount (in words) :</td>\n<td>Indian Rupees Eleven Thousand Nine Hundred Two and Eighty paise Only</td>\n</tr>\n<tr>\n<td></td>\n<td>for Bhartiya Enterprises A/c (Yr 19-20)</td>\n</tr>\n<tr>\n<td></td>\n<td>Authorised Signatory</td>\n</tr>\n</table>",
+      "page": 789,
+      "polygon": [
+        [
+          34.2591567337513,
+          19.94317626953125
+        ],
+        [
+          562.7835959196091,
+          19.94317626953125
+        ],
+        [
+          561.6214865446091,
+          797.9554481506348
+        ],
+        [
+          33.0970473587513,
+          797.9554481506348
+        ]
+      ],
+      "bbox": [
+        33.0970473587513,
+        19.94317626953125,
+        562.7835959196091,
+        797.9554481506348
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    },
+    {
+      "id": "/page/0/PageFooter/1",
+      "block_type": "PageFooter",
+      "html": "",
+      "page": 789,
+      "polygon": [
+        [
+          220.2382391691208,
+          804.3005464076996
+        ],
+        [
+          365.8702126145363,
+          802.6560151576996
+        ],
+        [
+          365.8702126145363,
+          813.3154563903809
+        ],
+        [
+          220.2382391691208,
+          814.5029838085175
+        ]
+      ],
+      "bbox": [
+        220.2382391691208,
+        802.6560151576996,
+        365.8702126145363,
+        814.5029838085175
+      ],
+      "section_hierarchy": {},
+      "images": {}
+    }
+  ],
+  "page_info": {
+    "0": {
+      "bbox": [
+        0.0,
+        0.0,
+        595.0,
+        842.0
+      ],
+      "polygon": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          595.0,
+          0.0
+        ],
+        [
+          595.0,
+          842.0
+        ],
+        [
+          0.0,
+          842.0
+        ]
+      ]
+    }
+  }
+}
