@@ -32,7 +32,7 @@
 
 ### Project Structure
 ```
-docling/
+Financial-RAG/
 ├── api_server.py              # Main Flask API server
 ├── rag_backend.py             # Core RAG processing logic
 ├── aggregation_optimizer.py   # Query optimization and sampling

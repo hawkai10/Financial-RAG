@@ -1,4 +1,4 @@
-# Core dependencies for docling RAG application
+# Core dependencies for Financial RAG application
 streamlit>=1.28.0
 requests>=2.31.0
 numpy>=1.24.0
@@ -14,8 +14,7 @@ aiohttp>=3.8.0
 rank-bm25>=0.2.2
 tiktoken>=0.5.0
 
-# Document processing (docling)
-docling>=0.1.0
+# Document processing
 pdfplumber>=0.9.0
 camelot-py>=0.11.0
 PyMuPDF>=1.23.0
@@ -67,10 +66,6 @@ cycler
 dill
 diskcache
 distro
-docling
-docling-core
-docling-ibm-models
-docling-parse
 durationpy
 easyocr
 et_xmlfile

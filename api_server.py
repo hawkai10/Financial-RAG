@@ -625,7 +625,7 @@ def get_recent_documents():
                 'id': 'doc_1',
                 'title': 'Export_CNC_Machine_US.docx',
                 'fileType': 'word',
-                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\docling\\Source_Documents\\Export_CNC_Machine_US.docx',
+                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\Export_CNC_Machine_US.docx',
                 'lastAccessed': '2025-07-28T10:30:00Z',
                 'sourceType': 'Windows Shares'
             },
@@ -633,7 +633,7 @@ def get_recent_documents():
                 'id': 'doc_2', 
                 'title': '60494300N_NOS_BE_Version_1_Installation_Handbook_Manual.pdf',
                 'fileType': 'pdf',
-                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\docling\\Source_Documents\\60494300N_NOS_BE_Version_1_Installation_Handbook_Manual.pdf',
+                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\60494300N_NOS_BE_Version_1_Installation_Handbook_Manual.pdf',
                 'lastAccessed': '2025-07-28T09:15:00Z',
                 'sourceType': 'Windows Shares'
             },
@@ -641,7 +641,7 @@ def get_recent_documents():
                 'id': 'doc_3',
                 'title': 'EN_IH_P-4532DN_P-5032DN_P-5532DN_UT_Rev_1.pdf',
                 'fileType': 'pdf', 
-                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\docling\\Source_Documents\\EN_IH_P-4532DN_P-5032DN_P-5532DN_UT_Rev_1.pdf',
+                'sourcePath': 'C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\EN_IH_P-4532DN_P-5032DN_P-5532DN_UT_Rev_1.pdf',
                 'lastAccessed': '2025-07-27T16:45:00Z',
                 'sourceType': 'Windows Shares'
             }
