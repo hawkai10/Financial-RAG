@@ -879,7 +879,7 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
     def child_score(c: Dict[str, Any]) -> float:
         return float(c.get("final_rerank_score", c.get("retrieval_score", 0.0)))
 
-    top_children_sel = sorted(reranked_children, key=child_score, reverse=True)[:top_parents]
+    top_children_sel = sorted(reranked_children, key=child_score, reverse=True)[:top_children]
 
     # 4) Get their parents (dedup)
     parent_ids: List[int] = []

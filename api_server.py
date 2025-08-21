@@ -83,12 +83,18 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
         try:
             # Handle different chunk formats
             if isinstance(chunk, dict):
-                # Extract document info from chunk
-                chunk_id = chunk.get('chunk_id', chunk.get('id', f'doc_{i}'))
-                document_name = chunk.get('document_name', chunk.get('source', chunk.get('file', 'Unknown Document')))
-                
-                # Get text content from various possible fields
-                text_content = chunk.get('chunk_text', chunk.get('text', chunk.get('content', '')))
+                # Extract document info from chunk (prefer child fields when present)
+                chunk_id = chunk.get('child_id') or chunk.get('chunk_id') or chunk.get('id', f'doc_{i}')
+                document_name = (
+                    chunk.get('document_id')
+                    or chunk.get('document_name')
+                    or chunk.get('source')
+                    or chunk.get('file')
+                    or 'Unknown Document'
+                )
+
+                # Get text content from various possible fields (prefer child text)
+                text_content = chunk.get('text', chunk.get('chunk_text', chunk.get('content', '')))
                 # Do not truncate snippet per requirements
                 snippet = text_content
                 
@@ -121,6 +127,12 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                     # Keep safe fallbacks if anything goes wrong
                     pass
 
+                # Prefer reranker score for ordering in UI when available
+                score_val = (
+                    chunk.get('final_rerank_score',
+                              chunk.get('retrieval_score',
+                                       chunk.get('score', 0.0)))
+                )
                 # Create UI-compatible document object
                 doc = {
                     'id': str(chunk_id),
@@ -131,7 +143,7 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                     'date': last_modified,  # Last edited date when available
                     'snippet': snippet,
                     'author': 'System',
-                    'score': chunk.get('score', 0.0)
+                    'score': score_val
                 }
                 documents.append(doc)
                 
@@ -376,7 +388,8 @@ def search():
             # Extract answer and chunks from result with better handling
             if isinstance(result, dict):
                 answer = result.get('answer', result.get('response', 'No answer generated'))
-                chunks = result.get('chunks', result.get('retrieved_chunks', []))
+                # Prefer child chunks in reranker order; fallback to parent chunks
+                chunks = result.get('top_children_chunks') or result.get('chunks') or result.get('retrieved_chunks', [])
                 logger.info(f"Found answer: {answer[:100] if answer else 'None'}...")
                 logger.info(f"Found {len(chunks)} chunks")
             else:
@@ -562,7 +575,8 @@ def search_stream():
                 
                 # Extract chunks from result
                 if isinstance(result, dict):
-                    chunks = result.get('chunks', result.get('retrieved_chunks', []))
+                    # Prefer child chunks in reranker order; fallback to parent chunks
+                    chunks = result.get('top_children_chunks') or result.get('chunks') or result.get('retrieved_chunks', [])
                     answer = result.get('answer', result.get('response', 'No answer generated'))
                 else:
                     # If result is just a string answer, we don't have chunks yet
