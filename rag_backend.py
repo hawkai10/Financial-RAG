@@ -2,6 +2,7 @@ import os
 import time
 import json
 import hashlib
+from datetime import datetime
 import numpy as np
 from typing import List, Dict, Tuple, Any, Optional
 from functools import wraps
@@ -933,6 +934,39 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
     except Exception as e:
         logger.error(f"LLM synthesis failed: {e}")
         answer = "I couldn't generate an answer at this time."
+
+    # 5b) Structured debug trace logging
+    try:
+        def _serialize_chunk(c: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                "chunk_id": c.get("chunk_id"),
+                "child_id": c.get("child_id") or str(c.get("chunk_id", ""))[6:],
+                "parent_id": child_to_parent.get(str(c.get("child_id") or str(c.get("chunk_id", ""))[6:])) if isinstance(child_to_parent, dict) else None,
+                "retrieval_score": c.get("retrieval_score"),
+                "final_rerank_score": c.get("final_rerank_score"),
+                "text": c.get("chunk_text") or c.get("text") or "",
+            }
+
+        trace = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "question": question,
+            "generated_queries": queries,
+            "retrieved_children": [_serialize_chunk(c) for c in top_children_sel],
+            "context_prompt": prompt,
+            "llm_answer": answer,
+        }
+        # Write to test_logs with a stable-ish filename
+        out_dir = os.path.join(os.getcwd(), "test_logs")
+        os.makedirs(out_dir, exist_ok=True)
+        hh = hashlib.sha256((question or "").encode("utf-8")).hexdigest()[:8]
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        out_path = os.path.join(out_dir, f"query_trace_{ts}_{hh}.json")
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(trace, f, ensure_ascii=False, indent=2)
+        logger.info(f"[TRACE] Query trace written to {out_path}")
+        logger.info(f"[TRACE] Q='{question[:80]}...' | queries={len(queries) if queries else 0} | children={len(top_children_sel)}")
+    except Exception as _e:
+        logger.warning(f"[TRACE] Failed to write query trace: {_e}")
     processing_time = time.time() - start_time
     return {
         "answer": answer,

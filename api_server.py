@@ -405,7 +405,7 @@ def search():
             #     items_count=len(ai_response.get('items', []))
             # )
             
-            logger.info(f"[SUCCESS] Enhanced RAG search successful: {len(documents)} documents")
+            logger.info(f"[SUCCESS] Enhanced RAG search successful: {len(documents)} documents for Q='{sanitized_query[:80]}...'")
             
             return jsonify({
                 'documents': documents,
