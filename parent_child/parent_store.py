@@ -50,9 +50,24 @@ class ParentStore:
             return []
         conn = sqlite3.connect(self.db_path)
         qmarks = ','.join('?' for _ in ids)
-        rows = conn.execute(f"SELECT parent_id, document_id, page_start, page_end, content FROM parents WHERE parent_id IN ({qmarks})", ids).fetchall()
+        rows = conn.execute(
+            f"SELECT parent_id, document_id, page_start, page_end, content FROM parents WHERE parent_id IN ({qmarks})",
+            ids,
+        ).fetchall()
         conn.close()
+        # Preserve the order of the provided IDs (important for UI relevance ordering)
+        order_index = {pid: i for i, pid in enumerate(ids)}
+        rows.sort(key=lambda r: order_index.get(r[0], len(order_index)))
+
         out: List[ParentChunk] = []
         for r in rows:
-            out.append(ParentChunk(parent_id=r[0], document_id=r[1], page_start=r[2], page_end=r[3], content=r[4]))
+            out.append(
+                ParentChunk(
+                    parent_id=r[0],
+                    document_id=r[1],
+                    page_start=r[2],
+                    page_end=r[3],
+                    content=r[4],
+                )
+            )
         return out
