@@ -101,11 +101,19 @@ def run_marker():
     if extra_args:
         command.extend(extra_args)
 
-    # Select Gemini model (safe: pass via env). Default to user's requested model.
+    # Select Gemini model (safe: pass via env). Prefer explicit GEMINI_MODEL, fallback to MARKER_GEMINI_MODEL, else default.
     gemini_model = os.getenv("GEMINI_MODEL", os.getenv("MARKER_GEMINI_MODEL", "gemini-1.5-flash-8b")).strip()
     child_env = os.environ.copy()
     if gemini_model:
+        # Set both to cover different Marker builds that read either name
         child_env["GEMINI_MODEL"] = gemini_model
+        child_env["MARKER_GEMINI_MODEL"] = gemini_model
+
+    # Optional: pass model flag directly to CLI if your Marker build supports it.
+    # Configure the flag name via env MARKER_MODEL_FLAG (e.g., "--gemini_model" or "--model").
+    model_flag = os.getenv("MARKER_MODEL_FLAG", "").strip()
+    if model_flag and gemini_model:
+        command.extend([model_flag, gemini_model])
     # Optional: multi-GPU chunk convert environment variables
     if use_chunk_convert:
         num_devices = os.getenv("NUM_DEVICES")
@@ -119,6 +127,9 @@ def run_marker():
     print(" ", " ".join(shlex.quote(str(p)) for p in command))
     if use_llm:
         print(f" Using LLM service: {llm_service or 'gemini'} | model: {gemini_model}")
+        # Extra visibility on env propagated to the child process
+        visible_model = child_env.get("GEMINI_MODEL") or child_env.get("MARKER_GEMINI_MODEL")
+        print(f" Propagated env: GEMINI_MODEL={visible_model!r}, MARKER_GEMINI_MODEL={child_env.get('MARKER_GEMINI_MODEL')!r}")
 
     t0 = time.time()
     result = subprocess.run(command, capture_output=True, text=True, env=child_env)
