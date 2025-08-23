@@ -25,6 +25,8 @@ torch>=2.1.0
 sentence-transformers>=2.2.2
 transformers>=4.35.2
 safetensors>=0.4.0
+marker-pdf[full]
+
 
 # Optional dev tooling (uncomment if needed)
 # pytest>=7.4.0
