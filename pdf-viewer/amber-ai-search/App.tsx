@@ -156,9 +156,6 @@ const App: React.FC = () => {
   };
 
   const handleViewPdf = (sourcePath: string) => {
-    console.log('App: Viewing PDF with source path:', sourcePath);
-    const pdfUrl = getPdfUrl(sourcePath);
-    console.log('App: Generated PDF URL:', pdfUrl);
     setViewingPdfPath(sourcePath);
   };
 
@@ -167,12 +164,10 @@ const App: React.FC = () => {
   };
 
   const getPdfUrl = (sourcePath: string | null): string | null => {
-    if (!sourcePath) return null;
-    const url = new URL('http://localhost:5000/pdf');
-    url.searchParams.set('path', sourcePath);
-    console.log('App: getPdfUrl - Generated URL:', url.toString());
-    return url.toString();
-  };
+      if (!sourcePath) return null;
+      const fileName = sourcePath.split(/[\\/]/).pop() || sourcePath;
+      return fileName ? `/Source_document/${fileName}` : null;
+  }
 
   // Cleanup streaming connection on unmount
   useEffect(() => {

@@ -29,7 +29,7 @@ import json
 import traceback
 import time
 from datetime import datetime
-from flask import Flask, request, jsonify, Response, send_file
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from typing import Dict, List, Any
 
@@ -500,39 +500,6 @@ def get_available_filters():
         'dataSources': ['Windows Shares', 'Local Documents'],
         'timeRanges': ['all', 'week', 'month', '3months', 'year']
     })
-
-@app.route('/pdf', methods=['GET'])
-def serve_pdf():
-    """Serve PDF files from Source_Documents folder"""
-    try:
-        file_path = request.args.get('path')
-        if not file_path:
-            return jsonify({'error': 'Path parameter is required'}), 400
-        
-        # Security: ensure the path is within Source_Documents
-        base_dir = os.path.abspath(os.path.join(os.getcwd(), 'Source_Documents'))
-        requested_path = os.path.abspath(os.path.join(base_dir, file_path))
-        
-        # Check if the requested path is within base directory
-        if not requested_path.startswith(base_dir):
-            return jsonify({'error': 'Access denied'}), 403
-        
-        # Check if file exists
-        if not os.path.isfile(requested_path):
-            return jsonify({'error': 'File not found'}), 404
-        
-        # Check if download parameter is set
-        download = request.args.get('download', 'false').lower() == 'true'
-        
-        return send_file(
-            requested_path,
-            as_attachment=download,
-            download_name=os.path.basename(requested_path) if download else None
-        )
-        
-    except Exception as e:
-        logger.error(f"Error serving PDF: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/recent-documents', methods=['GET'])
 def get_recent_documents():

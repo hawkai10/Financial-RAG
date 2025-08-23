@@ -10,16 +10,7 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      },
-      optimizeDeps: {
-        include: ['pdfjs-dist']
-      },
-      assetsInclude: ['**/*.pdf'],
-      server: {
-        fs: {
-          allow: ['..']
+          '@': path.resolve('.'),
         }
       }
     };

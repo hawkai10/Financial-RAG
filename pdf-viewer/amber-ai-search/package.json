@@ -9,10 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@types/exceljs": "^0.5.3",
-    "docx-preview": "^0.3.6",
-    "exceljs": "^4.4.0",
-    "pdfjs-dist": "^5.4.54",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

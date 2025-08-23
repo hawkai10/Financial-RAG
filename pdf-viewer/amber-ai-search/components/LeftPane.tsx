@@ -79,7 +79,7 @@ const LeftPane: React.FC<LeftPaneProps> = ({ documents, docRefs, highlightedDocI
             key={doc.id} 
             ref={docRef || createRef<HTMLDivElement>()}
             document={doc}
-            isHighlighted={highlightedDocId === doc.id}
+            isHighlighted={highlightedDocId === doc.id} 
             onViewPdf={onViewPdf}
           />
         );
