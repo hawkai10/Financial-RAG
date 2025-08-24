@@ -892,9 +892,73 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
                 allowed_exts |= type_map.get(str(t).lower(), set())
     except Exception:
         allowed_exts = None
+
+    # Optional timeRange filtering: compute time window (min_ts/max_ts in epoch seconds)
+    apply_time_filter = False
+    min_ts: Optional[float] = None
+    max_ts: Optional[float] = None
+    time_label: Optional[str] = None
+    try:
+        tr = (filters or {}).get("timeRange") or {}
+        if isinstance(tr, dict):
+            time_label = tr.get("label")
+            tr_type = (tr.get("type") or "all").lower()
+            now = time.time()
+            # Helper to parse ISO-like strings
+            def _parse_ts(val: Any) -> Optional[float]:
+                if not val:
+                    return None
+                if isinstance(val, (int, float)):
+                    return float(val)
+                if isinstance(val, str):
+                    try:
+                        # Handle trailing Z
+                        s = val.replace("Z", "+00:00")
+                        # fromisoformat handles 'YYYY-MM-DD' and with timezone offset
+                        dt = datetime.fromisoformat(s)
+                        return dt.timestamp()
+                    except Exception:
+                        return None
+                return None
+            if tr_type == 'all':
+                apply_time_filter = False
+            elif tr_type == '3days':
+                min_ts = now - 3 * 24 * 3600
+                apply_time_filter = True
+            elif tr_type == 'week':
+                min_ts = now - 7 * 24 * 3600
+                apply_time_filter = True
+            elif tr_type == 'month':
+                min_ts = now - 30 * 24 * 3600
+                apply_time_filter = True
+            elif tr_type == '3months':
+                min_ts = now - 90 * 24 * 3600
+                apply_time_filter = True
+            elif tr_type == 'year':
+                min_ts = now - 365 * 24 * 3600
+                apply_time_filter = True
+            elif tr_type == '5years':
+                min_ts = now - 5 * 365 * 24 * 3600
+                apply_time_filter = True
+            elif tr_type == 'custom':
+                # Expect startDate/endDate possibly as ISO strings
+                sd = _parse_ts(tr.get('startDate'))
+                ed = _parse_ts(tr.get('endDate'))
+                # Normalize order if swapped
+                if sd and ed and sd > ed:
+                    sd, ed = ed, sd
+                min_ts = sd
+                max_ts = ed or now
+                apply_time_filter = bool(min_ts or max_ts)
+            else:
+                # Unknown type: do not apply
+                apply_time_filter = False
+    except Exception:
+        apply_time_filter = False
     # 2) Rerank children
-    # If a file-type filter is requested, filter child chunks BEFORE reranking
-    if apply_filetype_filter:
+    # If any filter is requested, filter child chunks BEFORE reranking
+    apply_any_filter = apply_filetype_filter or apply_time_filter
+    if apply_any_filter:
         try:
             # Collect all candidate parent IDs from retrieved children
             all_parent_ids = []
@@ -931,35 +995,62 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
                 return idx
             stem_index_early = _build_index(src_base) if os.path.isdir(src_base) else {}
 
-            def _pid_allowed(pid: int) -> bool:
+            # Helper: check if a parent passes both fileType and time filters
+            def _pid_passes(pid: int) -> bool:
                 try:
                     doc = pid_to_doc.get(pid)
                     if not doc:
-                        return False
+                        return False if apply_any_filter else True
                     base = os.path.basename(str(doc))
                     stem, ext = os.path.splitext(base)
-                    # Resolve by stem if possible
                     resolved = stem_index_early.get(doc) or stem_index_early.get(stem)
-                    if resolved:
-                        _, ext_res = os.path.splitext(resolved)
-                        return ext_res.lower() in (allowed_exts or set())
-                    # Fallback to extension on the stored name
-                    if ext:
-                        return ext.lower() in (allowed_exts or set())
-                    return False
+                    # File type check
+                    if apply_filetype_filter:
+                        if resolved:
+                            _, ext_res = os.path.splitext(resolved)
+                            if ext_res.lower() not in (allowed_exts or set()):
+                                return False
+                        else:
+                            if not ext or ext.lower() not in (allowed_exts or set()):
+                                return False
+                    # Time check
+                    if apply_time_filter:
+                        resolved_path = resolved or (doc if os.path.isabs(doc) else None)
+                        if not resolved_path:
+                            # Try to join with Source_Documents
+                            cand = os.path.join(src_base, doc)
+                            resolved_path = cand if os.path.exists(cand) else None
+                        if not resolved_path:
+                            return False
+                        try:
+                            mtime = os.path.getmtime(resolved_path)
+                        except Exception:
+                            return False
+                        if min_ts is not None and mtime < min_ts:
+                            return False
+                        if max_ts is not None and mtime > max_ts:
+                            return False
+                    return True
                 except Exception:
-                    return False
+                    return False if apply_any_filter else True
 
             # Filter children list now
             child_chunks = [c for c in child_chunks
-                            if _pid_allowed(child_to_parent.get(str(c.get("child_id") or str(c.get("chunk_id", ""))[6:]))
+                            if _pid_passes(child_to_parent.get(str(c.get("child_id") or str(c.get("chunk_id", ""))[6:]))
                                              if isinstance(child_to_parent, dict) else None)]
         except Exception as _fe:
             logger.warning(f"Early child filter by fileType failed; proceeding without early filter: {_fe}")
 
     # If filter removed all children, return a friendly message
-    if apply_filetype_filter and not child_chunks:
-        selected = ", ".join((filters or {}).get("fileType", [])) if isinstance((filters or {}).get("fileType"), list) else "selected file type(s)"
+    if apply_any_filter and not child_chunks:
+        ft_label = ", ".join((filters or {}).get("fileType", [])) if isinstance((filters or {}).get("fileType"), list) else None
+        tr_label = time_label or ((filters or {}).get("timeRange", {}) or {}).get("label")
+        parts = []
+        if ft_label:
+            parts.append(ft_label)
+        if tr_label and (apply_time_filter):
+            parts.append(tr_label)
+        selected = ", ".join(parts) if parts else "selected filter(s)"
         processing_time = time.time() - start_time
         msg = f"No documents matched your filter: {selected}. Try adjusting or clearing the filter and search again."
         return {
@@ -1027,23 +1118,44 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
         return idx
     stem_index = _build_index(src_base) if os.path.isdir(src_base) else {}
 
-    def _doc_stem_allowed(doc_name: str) -> bool:
-        # If no explicit filter requested, allow all
-        if not apply_filetype_filter:
+    def _doc_passes(doc_name: str) -> bool:
+        # If no filters, allow all
+        if not apply_any_filter:
             return True
         try:
             resolved = stem_index.get(str(doc_name))
-            if resolved:
-                _, ext = os.path.splitext(resolved)
-                return ext.lower() in (allowed_exts or set())
-            # If cannot resolve, try to use ext on provided name
-            _, ext2 = os.path.splitext(str(doc_name))
-            return ext2 and ext2.lower() in (allowed_exts or set())
+            # File type check
+            if apply_filetype_filter:
+                if resolved:
+                    _, ext = os.path.splitext(resolved)
+                    if ext.lower() not in (allowed_exts or set()):
+                        return False
+                else:
+                    _, ext2 = os.path.splitext(str(doc_name))
+                    if (not ext2) or (ext2.lower() not in (allowed_exts or set())):
+                        return False
+            # Time check
+            if apply_time_filter:
+                resolved_path = resolved or (doc_name if os.path.isabs(str(doc_name)) else None)
+                if not resolved_path:
+                    cand = os.path.join(src_base, str(doc_name))
+                    resolved_path = cand if os.path.exists(cand) else None
+                if not resolved_path:
+                    return False
+                try:
+                    mtime = os.path.getmtime(resolved_path)
+                except Exception:
+                    return False
+                if min_ts is not None and mtime < min_ts:
+                    return False
+                if max_ts is not None and mtime > max_ts:
+                    return False
+            return True
         except Exception:
-            return False
+            return False if apply_any_filter else True
 
     # Filter parents by allowed extensions if requested, then keep first top_parents
-    parents_filtered: List = [p for p in parents_all if _doc_stem_allowed(p.document_id)]
+    parents_filtered: List = [p for p in parents_all if _doc_passes(p.document_id)]
     parents = parents_filtered[:top_parents] if parents_filtered else []
 
     # Map parent_id -> document_id/name for child->doc resolution in UI
@@ -1076,7 +1188,7 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
         })
 
     # Keep only children whose parent is within the selected parents set when filtering applies
-    if apply_filetype_filter:
+    if apply_any_filter:
         selected_parent_ids = {p.parent_id for p in parents}
         def _child_pid(c: Dict[str, Any]) -> Optional[int]:
             try:
@@ -1087,7 +1199,14 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
 
         # If no parents remain after filtering, return a friendly message
         if not parent_chunks:
-            selected = ", ".join((filters or {}).get("fileType", [])) if isinstance((filters or {}).get("fileType"), list) else "selected file type(s)"
+            ft_label = ", ".join((filters or {}).get("fileType", [])) if isinstance((filters or {}).get("fileType"), list) else None
+            tr_label = time_label or ((filters or {}).get("timeRange", {}) or {}).get("label")
+            parts = []
+            if ft_label:
+                parts.append(ft_label)
+            if tr_label and (apply_time_filter):
+                parts.append(tr_label)
+            selected = ", ".join(parts) if parts else "selected filter(s)"
             processing_time = time.time() - start_time
             msg = f"No documents matched your filter: {selected}. Try adjusting or clearing the filter and search again."
             return {
@@ -1202,7 +1321,7 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
         "avg_relevance_score": safe_mean([child_score(c) for c in top_children_sel]) if top_children_sel else 0.0,
         "query_strategy": "Simple",
         "retrieval_method": "single_strategy_child_parent",
-    "retrieval_info": {"queries": queries, "top_children": len(child_chunks), "parents": len(parents)},
+    "retrieval_info": {"queries": queries, "top_children": len(child_chunks), "parents": len(parents), "filter_active": apply_any_filter},
         "optimization_result": None,
         "savings_info": None,
         "processing_method": "simple",

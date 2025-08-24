@@ -943,8 +943,8 @@ def get_available_filters():
     """Get available filter options"""
     return jsonify({
         'fileTypes': ['pdf', 'word', 'excel', 'ppt', 'txt'],
-        'dataSources': ['Windows Shares', 'Local Documents'],
-        'timeRanges': ['all', 'week', 'month', '3months', 'year']
+    'dataSources': ['Windows Shares', 'Local Documents'],
+    'timeRanges': ['all', '3days', 'week', 'month', '3months', 'year', '5years', 'custom']
     })
 
 @app.route('/pdf', methods=['GET'])
