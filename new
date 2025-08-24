@@ -1,0 +1,74 @@
+1. Search Within a Specific Folder
+
+Amber Search lets you restrict your search results to a single folder. Once you identify the folder, you can choose “Search only in this folder”, which ensures all retrieved results come exclusively from that location.
+
+Why It’s Useful:
+
+Precision: You won’t be overwhelmed by files outside the context you care about.
+
+Efficiency: Faster searching when you know where to look.
+
+Easy to Use: The UI makes narrowing searches straightforward.
+
+Example: If you want only documents from the “Financial Reports 2023” folder, you can isolate results from just that folder without sifting through the rest of your company’s storage.
+
+2. Search Operators
+
+Amber Search supports advanced operators to refine searches with precision. These include:
+
+Quotes " " → Search for an exact phrase.
+Example: "financial year 2022" finds only that exact phrase.
+
+Wildcard * → Replace unknown or flexible parts of a word/phrase.
+Example: financ* finds finance, financial, financing, etc.
+
+Exclusion -term → Exclude results containing a specific word.
+Example: budget -draft finds documents about budget but excludes draft versions.
+
+Multiple Exclusions → Stack minus operators for finer filtering.
+Example: offer 100 licences -customerA -customerB excludes both names.
+
+Field-Specific Operators:
+
+type: → Search by file type (e.g., type:pdf)
+
+author: → Restrict results to documents from a specific author
+
+Why It’s Useful:
+
+Increases control over large datasets.
+
+Helps eliminate irrelevant results.
+
+Enables Google-like search power for business repositories.
+
+3. Tips & Tricks Suggestions at the Bottom of Search Results
+
+When your search doesn’t yield the best results, Amber Search displays a section:
+“Didn’t find what you were looking for?”
+
+Here, it suggests query improvements—such as correcting spelling mistakes, rephrasing terms, or trying related keywords. Clicking a suggestion automatically reruns the search with those adjustments.
+
+Why It’s Useful:
+
+Guided refinement → Helps users improve their searches without guesswork.
+
+Error recovery → Corrects typos or poor queries quickly.
+
+Saves time → Eliminates manual retyping of improved queries.
+
+Example: If you typed “annual raport 2023”, Amber might suggest “Did you mean: annual report 2023?” Clicking this fixes your search instantly.
+
+4. Reset All Filters
+
+Amber Search includes a “Reset Filters” option that clears all applied filters at once. Instead of manually removing file types, authors, dates, etc., you can reset everything with a single click.
+
+Why It’s Useful:
+
+Speed: Saves you from clearing each filter one by one.
+
+Workflow-friendly: Lets you move quickly from one search task to another.
+
+Clean start: Ensures no leftover filters affect new searches.
+
+Example: If you had narrowed results by PDFs, 2021, and Author = John Doe, you can clear all filters instantly to begin a fresh query.

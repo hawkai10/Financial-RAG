@@ -567,7 +567,7 @@ async def _retrieve_children_hybrid(query: str, max_children: int = 24) -> Tuple
 
     Dense retrieval supports an optional multi-encoder ensemble controlled via env:
       - ENSEMBLE_ENCODERS: comma-separated SentenceTransformer model names
-      - ENSEMBLE_COLLECTIONS: comma-separated collection names (Chroma/Qdrant)
+    - ENSEMBLE_COLLECTIONS: comma-separated collection names (Chroma)
       - ENSEMBLE_TABLES: comma-separated table names (pgvector)
       - ENSEMBLE_FUSION: 'rrf' or 'avg' (default: 'avg')
 

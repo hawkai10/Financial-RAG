@@ -64,7 +64,7 @@ Final Answer
 
 - **Backend**: Python 3.10+ with Flask
 - **AI Integration**: Google Gemini API
-- **Vector Store**: Chroma (default) or Qdrant; optional PGVector
+- **Vector Store**: Chroma (local)
 - **Frontend**: React 18 + TypeScript + Vite
 - **Document Processing**: Custom chunking and indexing pipeline
 

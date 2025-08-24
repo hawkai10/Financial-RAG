@@ -2,7 +2,7 @@ def get_child_vector_store(collection: str | None = None, table: str | None = No
     """Return a child vector store instance.
 
     Parameters:
-    - collection: name for backends that support named collections (e.g., Chroma, Qdrant)
+    - collection: name for backends that support named collections (Chroma)
     - table: name for pgvector backend
 
     Falls back to defaults if not provided.

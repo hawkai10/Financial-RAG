@@ -25,7 +25,7 @@
 - **Backend**: Python 3.10+ with Flask, dual-encoder retrieval, optional cross-encoder reranking
 - **Frontend**: React 18 + TypeScript + Vite + Tailwind CSS
 - **AI Integration**: Google Gemini API for answer generation
-- **Vector Store**: Chroma (default) or Qdrant; optional PGVector
+- **Vector Store**: Chroma (local, default)
 - **Document Processing**: Custom chunking and indexing pipeline
 - **Authentication**: None (internal use)
 - **Deployment**: Development mode (localhost)
@@ -86,7 +86,7 @@ Financial-RAG/
                                             ▼
                                    ┌─────────────────┐
                                    │   Vector Store  │
-                                   │ (Chroma/Qdrant) │
+                                   │     (Chroma)    │
                                    └─────────────────┘
 ```
 

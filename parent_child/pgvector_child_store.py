@@ -131,7 +131,7 @@ class PGVectorChildStore:
     def search(self, text_vector: List[float], top_k: int = 6) -> List[Dict[str, Any]]:
         op = self._operator
         cur = self._conn.cursor(row_factory=self._psycopg.rows.dict_row)
-        # Return distance as score for parity with Qdrant
+    # Return distance as score to align with other vector backends
         q = (
             f"SELECT child_id, parent_id, snippet, embedding {op} %s AS score "
             f"FROM {self.table} ORDER BY embedding {op} %s LIMIT %s"
