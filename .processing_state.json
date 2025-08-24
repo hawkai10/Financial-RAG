@@ -1,0 +1,15 @@
+{
+  "C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\cn22-23.pdf": {
+    "source_path": "C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\Source_Documents\\cn22-23.pdf",
+    "size": 26125,
+    "modified_time": 1751905583.0026689,
+    "content_hash": "553c0dd838f7182510861503602c7c1aa24e1096cbdc38d85756aad2f9833d2c",
+    "extracted": true,
+    "extracted_path": "C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\New folder\\cn22-23\\cn22-23.json",
+    "chunked": true,
+    "chunk_log_path": "C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\chunk_logs\\cn22-23_parent_child_chunks.json",
+    "embedded": true,
+    "last_processed": 1756032759.879039,
+    "error": null
+  }
+}

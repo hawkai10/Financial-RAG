@@ -94,10 +94,9 @@ class ParentChildChunker:
             except Exception:
                 # Skip missing/broken model (e.g., local path not found)
                 pass
-        if not self.embedders:
-            raise RuntimeError("No embedding model available. Set EMBED_BAAI_PATH and/or EMBED_GTE_PATH to local model folders or install sentence-transformers.")
-        # Keep single embedder for backward compatibility: prefer BAAI, else first available
-        self.embedder = self.embedders.get('baai') or next(iter(self.embedders.values()))
+        # Embedders are optional at init; pipeline may handle embeddings separately
+        # Keep single embedder for backward compatibility when available
+        self.embedder = self.embedders.get('baai') or (next(iter(self.embedders.values())) if self.embedders else None)
 
     def _normalize_text(self, text: str) -> str:
         # If HTML-like, strip tags and unescape entities; collapse whitespace
@@ -247,6 +246,8 @@ class ParentChildChunker:
                 texts.append(ct)
                 index_map.append((p_idx, c_idx))
         if texts:
+            if not self.embedders:
+                raise RuntimeError("No embedding model available for make_children_with_embeddings. Configure EMBED_* envs or install sentence-transformers.")
             # If both models available, compute and combine; else use the single available model
             if 'baai' in self.embedders and 'gte' in self.embedders:
                 baai_embs = self.embedders['baai'].encode(texts, show_progress_bar=False, convert_to_numpy=True)

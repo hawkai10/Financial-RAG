@@ -1,6 +1,7 @@
 import json
 import os
 import asyncio
+import logging
 from pathlib import Path
 from typing import List, Dict
 from .parent_child_chunker import ParentChildChunker, ParentChunk, ChildChunk
@@ -32,29 +33,58 @@ class ParentChildPipeline:
         with open(extraction_json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         blocks: List[dict] = []
-        # try common shapes
-        if isinstance(data, dict) and 'blocks' in data:
-            blocks = data['blocks']
-        elif isinstance(data, list) and len(data) and isinstance(data[0], dict) and 'pages' in data[0]:
-            # our earlier extractor format
-            for doc in data:
-                for page in doc.get('pages', []):
-                    for b in page.get('blocks', []):
-                        blocks.append({
-                            'content': b.get('content') or b.get('html') or '',
-                            'page': page.get('page_number') or b.get('page') or 0
-                        })
-        elif isinstance(data, list) and len(data) and 'page' in (data[0] or {}):
-            blocks = data
-        else:
-            # last resort, attempt to find nested 'html' or 'content'
-            pass
+        # Accept multiple Marker formats
+        if isinstance(data, dict):
+            # v1: flat blocks list
+            if 'blocks' in data and isinstance(data['blocks'], list):
+                blocks = data['blocks']
+            # Marker JSON with top-level children and nested structure
+            elif 'children' in data and isinstance(data['children'], list):
+                def walk(node, page_hint: int | None = None):
+                    if not isinstance(node, dict):
+                        return
+                    # capture any html/content-bearing node
+                    html = node.get('html') or node.get('content')
+                    if isinstance(html, str) and html.strip():
+                        blocks.append({'content': html, 'page': node.get('page', page_hint or 0)})
+                    # recurse into children
+                    kids = node.get('children')
+                    if isinstance(kids, list):
+                        for ch in kids:
+                            walk(ch, page_hint=node.get('page', page_hint))
+                walk(data)
+        elif isinstance(data, list) and data:
+            # v2: list of docs with pages -> blocks
+            if isinstance(data[0], dict) and 'pages' in data[0]:
+                for doc in data:
+                    for page in doc.get('pages', []):
+                        for b in page.get('blocks', []):
+                            blocks.append({
+                                'content': b.get('content') or b.get('html') or '',
+                                'page': page.get('page_number') or b.get('page') or 0
+                            })
+            # v3: list of blocks already
+            elif 'page' in (data[0] or {}):
+                blocks = data
+
+        # Filter empties
+        blocks = [b for b in blocks if isinstance(b, dict) and (b.get('content') or b.get('html'))]
+        logger = logging.getLogger(__name__)
+        if not blocks:
+            logger.warning(f"[PIPELINE] No blocks parsed from {extraction_json_path}; skipping.")
+            return {'parents': 0, 'children': 0, 'log_path': None}
 
         parents = self.chunker.make_parents(blocks, document_id=document_id)
+        if not parents:
+            logger.warning(f"[PIPELINE] No parent chunks created for {document_id}; skipping.")
+            return {'parents': 0, 'children': 0, 'log_path': None}
         self.parents.upsert_parents(parents)
 
         # Always dual-encoder ingestion (BAAI + GTE) with per-model collections
         children = self.chunker.make_children(parents)
+        if not children:
+            logger.warning(f"[PIPELINE] No child chunks created for {document_id}; skipping embeddings.")
+            return {'parents': len(parents), 'children': 0, 'log_path': None}
 
         # Generate succinct context for each child (improves retrieval); best-effort, does not fail ingestion
         try:
@@ -105,6 +135,8 @@ class ParentChildPipeline:
                 continue
             coll = _default_coll(model_name)
             vec = get_child_vector_store(collection=coll)
+            if not texts:
+                continue
             embs = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
             for idx, vec_np in enumerate(embs):
                 children[idx].embedding = vec_np.tolist()
@@ -174,7 +206,9 @@ class ParentChildPipeline:
         Returns a summary dict with totals.
         """
         base = Path(base_dir)
-        files = sorted([p for p in base.glob("**/*.json") if p.is_file()])
+        files = sorted(
+            [p for p in base.glob("**/*.json") if p.is_file() and not p.name.endswith("_meta.json")]
+        )
         total_parents = 0
         total_children = 0
         for jf in files:
@@ -184,5 +218,6 @@ class ParentChildPipeline:
                 total_parents += res.get('parents', 0)
                 total_children += res.get('children', 0)
             except Exception:
+                # Skip files that fail to ingest; continue with others
                 continue
         return {"parents": total_parents, "children": total_children}
