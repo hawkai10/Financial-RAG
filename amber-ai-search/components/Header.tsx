@@ -18,6 +18,7 @@ interface HeaderProps {
     onSearchSubmit: () => void;
     filters: Filters;
     onFilterChange: (newFilters: Partial<Filters>) => void;
+  onApplyFilters: () => void;
     resultsCount: number;
     isLoading: boolean;
     hasExecutedSearch?: boolean;
@@ -28,7 +29,8 @@ const Header: React.FC<HeaderProps> = ({
     onSearchQueryChange, 
     onSearchSubmit,
     filters, 
-    onFilterChange, 
+  onFilterChange,
+  onApplyFilters,
     resultsCount, 
     isLoading,
     hasExecutedSearch = false
@@ -112,6 +114,13 @@ const Header: React.FC<HeaderProps> = ({
             options={DATA_SOURCE_OPTIONS}
             onChange={(values) => onFilterChange({ dataSource: values as DataSourceType[] })}
         />
+        <button
+          onClick={onApplyFilters}
+          disabled={isLoading}
+          className="ml-2 px-3 py-1.5 bg-orange-500 text-white rounded-md shadow-sm hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          Apply
+        </button>
         <div className="flex-grow text-slate-500">
             {isLoading ? 'Searching...' : 
              hasExecutedSearch ? `About ${resultsCount} results` : 

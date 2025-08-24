@@ -17,7 +17,14 @@ const App: React.FC = () => {
   const [isAnswerLoading, setIsAnswerLoading] = useState<boolean>(false); // Answer loading state
   const [highlightedDocId, setHighlightedDocId] = useState<string | null>(null);
   const [viewingPdfPath, setViewingPdfPath] = useState<string | null>(null); // State for PDF viewer
+  // Staged filters (UI selections)
   const [filters, setFilters] = useState<Filters>({
+    fileType: [],
+    timeRange: { type: 'all', label: 'All Time' },
+    dataSource: [],
+  });
+  // Applied filters (used for actual searches)
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({
     fileType: [],
     timeRange: { type: 'all', label: 'All Time' },
     dataSource: [],
@@ -35,7 +42,7 @@ const App: React.FC = () => {
     return newDocRefs;
   };
 
-  const executeStreamingSearch = useCallback(async (query: string) => {
+  const executeStreamingSearch = useCallback(async (query: string, filtersOverride?: Filters) => {
     if (!query.trim()) {
       console.log("Empty query, skipping search");
       return;
@@ -46,13 +53,14 @@ const App: React.FC = () => {
     setLastExecutedQuery(query);
     setDocuments([]);
     setAiResponse(null);
+    const filtersToUse = filtersOverride ?? appliedFilters;
     
     try {
       console.log(`🔍 Executing streaming search for: "${query}"`);
       
       await streamingService.current.startStreamingSearch(
         query,
-        filters,
+        filtersToUse,
         // onChunks - called when document chunks are received
         (receivedDocuments: DocumentResult[]) => {
           console.log(`📄 Displaying ${receivedDocuments.length} document chunks`);
@@ -76,26 +84,27 @@ const App: React.FC = () => {
           setIsLoading(false);
           setIsAnswerLoading(false);
           // Fallback to regular search
-          executeRegularSearch(query);
+          executeRegularSearch(query, filtersToUse);
         }
       );
     } catch (error) {
       console.error("Streaming search failed, falling back to regular search:", error);
-      executeRegularSearch(query);
+      executeRegularSearch(query, filtersToUse);
     }
-  }, [filters]);
+  }, [appliedFilters]);
 
-  const executeRegularSearch = useCallback(async (query: string) => {
+  const executeRegularSearch = useCallback(async (query: string, filtersOverride?: Filters) => {
     console.log("🔄 Starting regular search for:", query);
     setIsLoading(true);
     setIsAnswerLoading(true);
     setLastExecutedQuery(query);
+    const filtersToUse = filtersOverride ?? appliedFilters;
     
     try {
       console.log("📡 Calling fetchSearchResultsAndAiResponse...");
       const { documents: fetchedDocs, aiResponse: fetchedAiResponse } = await fetchSearchResultsAndAiResponse(
         query,
-        filters
+        filtersToUse
       );
       console.log("✅ Received response:", { docs: fetchedDocs.length, hasResponse: !!fetchedAiResponse });
       docRefs.current = getDocRefs(fetchedDocs);
@@ -114,7 +123,7 @@ const App: React.FC = () => {
       setIsLoading(false);
       setIsAnswerLoading(false);
     }
-  }, [filters]);
+  }, [appliedFilters]);
 
     // Handle search submission (Enter key or button click)
   const handleSearchSubmit = useCallback(() => {
@@ -122,19 +131,20 @@ const App: React.FC = () => {
     executeRegularSearch(searchQuery);
   }, [searchQuery, executeRegularSearch]);
 
-  // Handle filter changes - only re-search if we already have executed a query
+  // Handle filter UI changes (staged only, do not execute search automatically)
   const handleFilterChange = useCallback((newFilters: Partial<Filters>) => {
-    setFilters(prev => {
-      const updatedFilters = { ...prev, ...newFilters };
-      
-      // If we have already executed a search, re-execute with new filters
-      if (lastExecutedQuery) {
-        executeStreamingSearch(lastExecutedQuery);
-      }
-      
-      return updatedFilters;
-    });
-  }, [lastExecutedQuery, executeStreamingSearch]);
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  }, []);
+
+  // Apply filters and trigger search only when Apply is pressed
+  const handleApplyFilters = useCallback(() => {
+    // Persist applied filters
+    setAppliedFilters(filters);
+    if (lastExecutedQuery) {
+      // Re-run the last search immediately with the freshly applied filters
+      executeStreamingSearch(lastExecutedQuery, filters);
+    }
+  }, [filters, lastExecutedQuery, executeStreamingSearch]);
 
   const handleSearchQueryChange = useCallback((query: string) => {
     setSearchQuery(query);
@@ -198,6 +208,7 @@ const App: React.FC = () => {
             onSearchSubmit={handleSearchSubmit}
             filters={filters}
             onFilterChange={handleFilterChange}
+            onApplyFilters={handleApplyFilters}
             resultsCount={documents.length}
             isLoading={isLoading}
             hasExecutedSearch={!!lastExecutedQuery}

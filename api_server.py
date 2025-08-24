@@ -596,11 +596,25 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                         candidates.insert(0, resolved_path)
 
                     # Determine file extension from first candidate that has one
+                    ext_val = None
                     for c in candidates:
                         _, ext = os.path.splitext(c)
                         if ext:
-                            file_type = ext.lstrip('.').lower()
+                            ext_val = ext.lstrip('.').lower()
                             break
+                    # Map raw extension to UI category to keep consistency with filters
+                    if ext_val:
+                        ext_map = {
+                            'pdf': 'pdf',
+                            'doc': 'word', 'docx': 'word',
+                            'xls': 'excel', 'xlsx': 'excel', 'csv': 'excel',
+                            'ppt': 'ppt', 'pptx': 'ppt',
+                            'txt': 'txt', 'md': 'txt',
+                            'htm': 'html', 'html': 'html',
+                            'eml': 'email', 'msg': 'email',
+                            'zip': 'compressed', 'tar': 'compressed', 'gz': 'compressed', 'rar': 'compressed', '7z': 'compressed',
+                        }
+                        file_type = ext_map.get(ext_val, ext_val)
 
                     # Determine last modified date from first existing path
                     for c in candidates:
@@ -623,7 +637,7 @@ def format_chunks_for_ui(chunks: List[Dict]) -> List[Dict]:
                     'id': str(chunk_id),
                     'sourceType': 'Windows Shares',  # Default for now
                     'sourcePath': str(resolved_path or document_name) if document_name else 'Unknown Path',
-                    'fileType': file_type,  # Actual file extension when available
+                    'fileType': file_type,  # UI category mapped from extension when possible
                     'title': os.path.basename(str(document_name)) if document_name else f'Document {i+1}',
                     'date': last_modified,  # Last edited date when available
                     'snippet': snippet,
@@ -851,7 +865,7 @@ def search():
                     return loop.run_until_complete(rag_query_enhanced(
                         question=sanitized_query,
                         topn=10,
-                        filters=None,
+                        filters=filters or None,
                         enable_reranking=True,
                         session_id=None,
                         enable_optimization=True
@@ -1035,14 +1049,22 @@ def search_stream():
     """
     Streaming search endpoint that returns chunks first, then AI response
     """
-    def generate_response():
+    # Capture request data BEFORE leaving the Flask request context
+    try:
+        _incoming = request.get_json(silent=True) or {}
+    except Exception:
+        _incoming = {}
+    _query_in = _incoming.get('query', '')
+    _filters_in = _incoming.get('filters', {})
+
+    def generate_response(query=_query_in, filters=_filters_in):
         try:
-            data = request.get_json()
-            query = data.get('query', '')
-            filters = data.get('filters', {})
+            # Ensure defaults
+            query = (query or '').strip()
+            filters = filters or {}
             
             # Validate query
-            if not query or not query.strip():
+            if not query:
                 yield f"data: {json.dumps({'error': 'Query is required'})}\n\n"
                 return
             
@@ -1056,9 +1078,7 @@ def search_stream():
             
             logger.info(f"[STREAM] Starting streaming search for: {sanitized_query}")
             
-            # Parent-child streaming path removed: always use RAG
-
-            # Try the full RAG pipeline (classic)
+            # Stream via the RAG pipeline
             try:
                 logger.info("[STREAM] Getting chunks first...")
                 
@@ -1073,7 +1093,7 @@ def search_stream():
                         return loop.run_until_complete(rag_query_enhanced(
                             question=sanitized_query,
                             topn=10,
-                            filters=None,
+                            filters=filters or None,
                             enable_reranking=True,
                             session_id=None,
                             enable_optimization=True
@@ -1113,7 +1133,7 @@ def search_stream():
                 logger.info(f"[STREAM] Sending {len(documents)} chunks to frontend")
                 yield f"data: {json.dumps({'type': 'chunks', 'data': {'documents': documents}})}\n\n"
                 
-                # Small delay to simulate processing time and ensure chunks are displayed
+                # Brief delay for smoother UI rendering
                 time.sleep(0.5)
                 
                 # Now send the AI response
@@ -1131,7 +1151,7 @@ def search_stream():
                 
                 yield f"data: {json.dumps({'type': 'answer', 'data': {'aiResponse': ai_response}})}\n\n"
                 
-                # Send completion signal
+                # Completion signal
                 yield f"data: {json.dumps({'type': 'complete', 'data': {'status': 'success', 'method': 'rag_enhanced'}})}\n\n"
                 
                 logger.info("[STREAM] Streaming search completed successfully")
@@ -1154,7 +1174,8 @@ def search_stream():
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Cache-Control'
+            # Allow common headers used by browsers during CORS preflight and requests
+            'Access-Control-Allow-Headers': 'Cache-Control, Content-Type'
         }
     )
 

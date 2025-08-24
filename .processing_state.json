@@ -8,8 +8,8 @@
     "extracted_path": "C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\New folder\\cn22-23\\cn22-23.json",
     "chunked": true,
     "chunk_log_path": "C:\\Users\\arvin\\OneDrive\\Desktop\\trial\\Final FInancial RAG\\chunk_logs\\cn22-23_parent_child_chunks.json",
-    "embedded": true,
-    "last_processed": 1756032759.879039,
+    "embedded": false,
+    "last_processed": 1756038504.5217853,
     "error": null
   }
 }

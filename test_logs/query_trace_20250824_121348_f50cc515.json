@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-08-24T12:13:48.532423Z",
+  "question": "What is the taxable value?",
+  "generated_queries": [
+    "What is the taxable value?"
+  ],
+  "retrieved_children": [],
+  "context_prompt": "You are an assistant answering from financial documents. If uncertain, say you don't know.\n\nQuestion: What is the taxable value?\n\n\nRELATED QUERIES:\n- What is the taxable value?\n\nContext:\n\nAnswer concisely and cite facts from the context.",
+  "llm_answer": "The provided context does not contain the taxable value.\n"
+}

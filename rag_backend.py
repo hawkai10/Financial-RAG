@@ -797,7 +797,7 @@ async def _retrieve_children_hybrid(query: str, max_children: int = 24) -> Tuple
     # Build deduped child chunks
     ranked = sorted(child_score_map.items(), key=lambda it: it[1], reverse=True)[:max_children]
 
-    # Diagnostics: pre-rerank hit@k based on substring expectation (optional)
+    # Optional pre-rerank diagnostics
     try:
         expect = os.getenv("HITK_EXPECT_CONTAINS", "").strip()
         k_val = int(os.getenv("HITK_K", "10"))
@@ -861,12 +861,128 @@ async def synthesize_answer_simple(question: str, parent_chunks: List[Dict[str, 
         return "I couldn't generate an answer at this time."
 
 
-async def execute_single_strategy(question: str, top_children: int = 24, top_parents: int = 3) -> Dict[str, Any]:
+async def execute_single_strategy(question: str, top_children: int = 24, top_parents: int = 3, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """End-to-end: normalize -> hybrid child retrieve -> dedup -> rerank -> pick top-3 children -> parents -> answer."""
     start_time = time.time()
     # 1) Children via hybrid
     child_chunks, child_to_parent, queries = await _retrieve_children_hybrid(question, max_children=top_children)
+
+    # Optional fileType filtering: build allowed extensions set from UI filters
+    # Always apply filtering if the UI sent a non-empty fileType list, even if none map to known extensions.
+    allowed_exts: Optional[set] = None
+    apply_filetype_filter = False
+    try:
+        ft = (filters or {}).get("fileType")
+        if isinstance(ft, list):
+            apply_filetype_filter = len(ft) > 0
+            type_map = {
+                "pdf": {".pdf"},
+                "word": {".doc", ".docx"},
+                "excel": {".xls", ".xlsx", ".csv"},
+                "ppt": {".ppt", ".pptx"},
+                "txt": {".txt", ".md"},
+                "html": {".html", ".htm"},
+                # Additional UI values that may appear
+                "email": {".eml", ".msg"},
+                "compressed": {".zip", ".tar", ".gz", ".rar", ".7z"},
+                "page": set(),  # page is a UI concept; match none explicitly
+            }
+            allowed_exts = set()
+            for t in ft:
+                allowed_exts |= type_map.get(str(t).lower(), set())
+    except Exception:
+        allowed_exts = None
     # 2) Rerank children
+    # If a file-type filter is requested, filter child chunks BEFORE reranking
+    if apply_filetype_filter:
+        try:
+            # Collect all candidate parent IDs from retrieved children
+            all_parent_ids = []
+            seen_pids = set()
+            for c in child_chunks:
+                try:
+                    cid = str(c.get("child_id") or str(c.get("chunk_id", ""))[6:])
+                    pid = child_to_parent.get(cid)
+                except Exception:
+                    pid = None
+                if pid is None:
+                    continue
+                if pid not in seen_pids:
+                    seen_pids.add(pid)
+                    all_parent_ids.append(pid)
+
+            # Load parent metadata (document_id) in bulk
+            from parent_child.parent_store import ParentStore as _PS_EARLY
+            parents_meta = _PS_EARLY().get_parents_by_ids(all_parent_ids)
+            pid_to_doc: Dict[int, str] = {p.parent_id: str(p.document_id) for p in parents_meta}
+
+            # Build a stem->path index to resolve real extensions
+            src_base = os.path.join(os.getcwd(), 'Source_Documents')
+            def _build_index(base_dir: str) -> Dict[str, str]:
+                idx: Dict[str, str] = {}
+                try:
+                    for r, _, files in os.walk(base_dir):
+                        for nm in files:
+                            stem, _ext = os.path.splitext(nm)
+                            if stem not in idx:
+                                idx[stem] = os.path.join(r, nm)
+                except Exception:
+                    pass
+                return idx
+            stem_index_early = _build_index(src_base) if os.path.isdir(src_base) else {}
+
+            def _pid_allowed(pid: int) -> bool:
+                try:
+                    doc = pid_to_doc.get(pid)
+                    if not doc:
+                        return False
+                    base = os.path.basename(str(doc))
+                    stem, ext = os.path.splitext(base)
+                    # Resolve by stem if possible
+                    resolved = stem_index_early.get(doc) or stem_index_early.get(stem)
+                    if resolved:
+                        _, ext_res = os.path.splitext(resolved)
+                        return ext_res.lower() in (allowed_exts or set())
+                    # Fallback to extension on the stored name
+                    if ext:
+                        return ext.lower() in (allowed_exts or set())
+                    return False
+                except Exception:
+                    return False
+
+            # Filter children list now
+            child_chunks = [c for c in child_chunks
+                            if _pid_allowed(child_to_parent.get(str(c.get("child_id") or str(c.get("chunk_id", ""))[6:]))
+                                             if isinstance(child_to_parent, dict) else None)]
+        except Exception as _fe:
+            logger.warning(f"Early child filter by fileType failed; proceeding without early filter: {_fe}")
+
+    # If filter removed all children, return a friendly message
+    if apply_filetype_filter and not child_chunks:
+        selected = ", ".join((filters or {}).get("fileType", [])) if isinstance((filters or {}).get("fileType"), list) else "selected file type(s)"
+        processing_time = time.time() - start_time
+        msg = f"No documents matched your filter: {selected}. Try adjusting or clearing the filter and search again."
+        return {
+            "answer": msg,
+            "llm_prompt": "",
+            "corrected_query": question,
+            "multiqueries": [],
+            "chunks": [],
+            "top_children_chunks": [],
+            "all_chunks_count": 0,
+            "processing_time": processing_time,
+            "session_id": "anonymous",
+            "avg_relevance_score": 0.0,
+            "query_strategy": "Simple",
+            "retrieval_method": "single_strategy_child_parent",
+            "retrieval_info": {"queries": [], "top_children": 0, "parents": 0, "filter_active": True},
+            "optimization_result": None,
+            "savings_info": None,
+            "processing_method": "simple",
+            "hierarchical_stats": None,
+            "agent_used": "Single-Strategy"
+        }
+
     reranked_children = child_chunks
     try:
         from document_reranker import EnhancedDocumentReranker
@@ -875,14 +991,14 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
     except Exception as e:
         logger.warning(f"Child reranking failed, using merged scores: {e}")
 
-    # 3) Take top-3 children
+    # 3) Take top-N children
     def child_score(c: Dict[str, Any]) -> float:
         return float(c.get("final_rerank_score", c.get("retrieval_score", 0.0)))
 
     top_children_sel = sorted(reranked_children, key=child_score, reverse=True)[:top_children]
 
-    # 4) Get their parents (dedup)
-    parent_ids: List[int] = []
+    # 4) Get their parents (dedup) – collect all candidates in order first
+    all_parent_ids_in_order: List[int] = []
     seen = set()
     for c in top_children_sel:
         cid = str(c.get("child_id") or str(c.get("chunk_id", ""))[6:])
@@ -891,12 +1007,45 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
             continue
         if pid not in seen:
             seen.add(pid)
-            parent_ids.append(pid)
-        if len(parent_ids) >= top_parents:
-            break
+            all_parent_ids_in_order.append(pid)
 
     from parent_child.parent_store import ParentStore
-    parents = ParentStore().get_parents_by_ids(parent_ids)
+    parents_all = ParentStore().get_parents_by_ids(all_parent_ids_in_order)
+
+    # Prepare path resolution util for filtering by extension
+    src_base = os.path.join(os.getcwd(), 'Source_Documents')
+    def _build_index(base_dir: str) -> Dict[str, str]:
+        idx: Dict[str, str] = {}
+        try:
+            for r, _, files in os.walk(base_dir):
+                for nm in files:
+                    stem, _ext = os.path.splitext(nm)
+                    if stem not in idx:
+                        idx[stem] = os.path.join(r, nm)
+        except Exception:
+            pass
+        return idx
+    stem_index = _build_index(src_base) if os.path.isdir(src_base) else {}
+
+    def _doc_stem_allowed(doc_name: str) -> bool:
+        # If no explicit filter requested, allow all
+        if not apply_filetype_filter:
+            return True
+        try:
+            resolved = stem_index.get(str(doc_name))
+            if resolved:
+                _, ext = os.path.splitext(resolved)
+                return ext.lower() in (allowed_exts or set())
+            # If cannot resolve, try to use ext on provided name
+            _, ext2 = os.path.splitext(str(doc_name))
+            return ext2 and ext2.lower() in (allowed_exts or set())
+        except Exception:
+            return False
+
+    # Filter parents by allowed extensions if requested, then keep first top_parents
+    parents_filtered: List = [p for p in parents_all if _doc_stem_allowed(p.document_id)]
+    parents = parents_filtered[:top_parents] if parents_filtered else []
+
     # Map parent_id -> document_id/name for child->doc resolution in UI
     parent_id_to_doc = {p.parent_id: str(p.document_id) for p in parents}
     parent_chunks: List[Dict[str, Any]] = []
@@ -911,6 +1060,56 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
             "retrieval_score": 1.0,
             "retrieval_method": "parent_from_top_children"
         })
+
+    # Build parent chunk dicts (after filtering/selection)
+    parent_chunks: List[Dict[str, Any]] = []
+    for p in parents:
+        parent_chunks.append({
+            "chunk_id": f"parent_{p.parent_id}",
+            "chunk_text": p.content,
+            "text": p.content,
+            "document_name": str(p.document_id),
+            "page_start": p.page_start,
+            "page_end": p.page_end,
+            "retrieval_score": 1.0,
+            "retrieval_method": "parent_from_top_children"
+        })
+
+    # Keep only children whose parent is within the selected parents set when filtering applies
+    if apply_filetype_filter:
+        selected_parent_ids = {p.parent_id for p in parents}
+        def _child_pid(c: Dict[str, Any]) -> Optional[int]:
+            try:
+                return child_to_parent.get(str(c.get("child_id") or str(c.get("chunk_id", ""))[6:]))
+            except Exception:
+                return None
+        top_children_sel = [c for c in top_children_sel if _child_pid(c) in selected_parent_ids]
+
+        # If no parents remain after filtering, return a friendly message
+        if not parent_chunks:
+            selected = ", ".join((filters or {}).get("fileType", [])) if isinstance((filters or {}).get("fileType"), list) else "selected file type(s)"
+            processing_time = time.time() - start_time
+            msg = f"No documents matched your filter: {selected}. Try adjusting or clearing the filter and search again."
+            return {
+                "answer": msg,
+                "llm_prompt": "",
+                "corrected_query": question,
+                "multiqueries": [],
+                "chunks": [],
+                "top_children_chunks": [],
+                "all_chunks_count": 0,
+                "processing_time": processing_time,
+                "session_id": "anonymous",
+                "avg_relevance_score": 0.0,
+                "query_strategy": "Simple",
+                "retrieval_method": "single_strategy_child_parent",
+                "retrieval_info": {"queries": [], "top_children": 0, "parents": 0, "filter_active": True},
+                "optimization_result": None,
+                "savings_info": None,
+                "processing_method": "simple",
+                "hierarchical_stats": None,
+                "agent_used": "Single-Strategy"
+            }
 
     # 5) Build prompt and synthesize (also capture prompt for debugging)
     # Build context
@@ -1003,7 +1202,7 @@ async def execute_single_strategy(question: str, top_children: int = 24, top_par
         "avg_relevance_score": safe_mean([child_score(c) for c in top_children_sel]) if top_children_sel else 0.0,
         "query_strategy": "Simple",
         "retrieval_method": "single_strategy_child_parent",
-        "retrieval_info": {"queries": queries, "top_children": len(child_chunks), "parents": parent_ids},
+    "retrieval_info": {"queries": queries, "top_children": len(child_chunks), "parents": len(parents)},
         "optimization_result": None,
         "savings_info": None,
         "processing_method": "simple",
@@ -1025,6 +1224,7 @@ async def rag_query_enhanced(question: str, topn: int = 5,
             question,
             top_children=max(topn * 3, 24),
             top_parents=3,
+            filters=filters,
         )
     except Exception as e:
         logger.error(f"RAG query failed: {e}")

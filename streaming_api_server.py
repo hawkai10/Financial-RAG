@@ -52,7 +52,7 @@ def search_stream():
                 result = asyncio.run(rag_query_enhanced(
                     question=sanitized_query,
                     topn=10,
-                    filters=None,
+                    filters=filters or None,
                     enable_reranking=True,
                     session_id=None,
                     enable_optimization=True
